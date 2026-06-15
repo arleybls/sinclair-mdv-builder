@@ -19,16 +19,9 @@
                 </Border.Background>
                 <Grid>
                     <!-- SINCLAIR wordmark (Assets/sinclair.svg, embedded as vector paths):
-                         a watermark on the right that dissolves into the gradient by the middle. -->
+                         a subtle full watermark on the right of the banner. -->
                     <Viewbox HorizontalAlignment="Right" VerticalAlignment="Center" Stretch="Uniform"
                              Margin="0,30,32,30" MaxWidth="560" Opacity="0.25">
-                        <Viewbox.OpacityMask>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#00FFFFFF" Offset="0.0" />
-                                <GradientStop Color="#FFFFFFFF" Offset="0.25" />
-                                <GradientStop Color="#FFFFFFFF" Offset="1.0" />
-                            </LinearGradientBrush>
-                        </Viewbox.OpacityMask>
                         <Canvas Width="566.9" Height="85">
                             <Path Fill="White" Data="M8.9,78.2V67.6h82.5v-12H8.9v-33h93.7v10.5H20.1v12h82.5v33.1H8.9z M109.4,78.2V50.6V23.4h11.2v27.2v27.6H109.4z M126.7,78.2V23.4h93.7v54.8h-11.2V33.9h-71.3v44.3L126.7,78.2z M226.4,78.2V23.4h93.8v10.5h-82.5v33.8h82.5v10.5L226.4,78.2z M327.7,78.2V42.5V6.9h11.2v35.7v35.7H327.7z M445.4,78.2V50.8V23.4h11.3v27.4v27.4H445.4z M463.5,78.2V23.4h93.7v10.5h-82.5v44.3C474.7,78.2,467.2,78.2,463.5,78.2L463.5,78.2z M344.9,23.4v10.5h82.5v12h-82.5v32.3h93.8V23.4H344.9z M427.4,67.6h-71.2v-6v-6h71.2v6V67.6z M109.4,17.4v-5.3V6.9h11.2v5.3v5.3H109.4z M445.4,17.4v-5.3V6.9h11.3v5.3v5.3H445.4z" />
                         </Canvas>
@@ -48,14 +41,26 @@
             </Border>
 
             <!-- Quick actions -->
-            <UniformGrid Rows="1" Columns="2" Margin="0,0,0,16">
-                <ui:CardAction Margin="0,0,8,0" Click="OnNotImplemented" Icon="{ui:SymbolIcon Add24}">
+            <UniformGrid Columns="2" Margin="0,0,0,16">
+                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon Add24}">
                     <StackPanel>
-                        <ui:TextBlock Text="New cartridge" FontTypography="BodyStrong" />
+                        <ui:TextBlock Text="New Empty Cartridge" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Start an empty 174,930-byte image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ui:CardAction>
-                <ui:CardAction Margin="8,0,0,0" Click="OnOpenCartridge" Icon="{ui:SymbolIcon FolderOpen24}">
+                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon FolderZip24}">
+                    <StackPanel>
+                        <ui:TextBlock Text="New Cartridge From ZIP" FontTypography="BodyStrong" />
+                        <ui:TextBlock Text="Build an image from a ZIP, preserving QL attributes" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardAction>
+                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon DocumentAdd24}">
+                    <StackPanel>
+                        <ui:TextBlock Text="New Cartridge From Files" FontTypography="BodyStrong" />
+                        <ui:TextBlock Text="Build an image from loose files" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardAction>
+                <ui:CardAction Margin="4" Click="OnOpenCartridge" Icon="{ui:SymbolIcon FolderOpen24}">
                     <StackPanel>
                         <ui:TextBlock Text="Open Cartridge" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Open an existing .MDV image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
