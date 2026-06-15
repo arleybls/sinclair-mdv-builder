@@ -30,4 +30,6 @@ public partial class CartridgePage : Page
     private void OnNotImplemented(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 
     private void OnOpenCartridge(object sender, RoutedEventArgs e) => AppActions.OpenCartridge();
+
+    private void OnSaveAs(object sender, RoutedEventArgs e) => AppActions.SaveCartridgeAs();
 }

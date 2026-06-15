@@ -54,4 +54,24 @@ public class MdvCartridgeLoadTests
         Assert.False(string.IsNullOrWhiteSpace(cart.MediumName));
         Assert.NotEmpty(cart.Files);
     }
+
+    [Theory]
+    [MemberData(nameof(MdvFixtures))]
+    public void Save_writes_the_image_back_byte_for_byte(string fixture)
+    {
+        var source = Path.Combine(FixturesDir(), fixture);
+        var cart = MdvCartridge.Load(source);
+
+        var temp = Path.Combine(Path.GetTempPath(), $"mdvtest_{Guid.NewGuid():N}.mdv");
+        try
+        {
+            cart.Save(temp);
+            Assert.Equal(File.ReadAllBytes(source), File.ReadAllBytes(temp));
+        }
+        finally
+        {
+            if (File.Exists(temp))
+                File.Delete(temp);
+        }
+    }
 }

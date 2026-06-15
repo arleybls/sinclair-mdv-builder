@@ -26,27 +26,50 @@ public sealed class MdvCartridge
     private const byte MapFile = 0xF8;
     private const byte DirectoryFile = 0x00;
 
+    // The raw 174,930-byte image this cartridge was loaded from. Kept so the
+    // cartridge can be written back byte-for-byte (Save As) before an in-place
+    // write engine exists.
+    private readonly byte[] _image;
+
     public string MediumName { get; }
     public ushort MediumId { get; }
     public IReadOnlyList<MdvFileEntry> Files { get; }
     public IReadOnlyList<MdvSectorInfo> Sectors { get; }
+
+    /// <summary>Path the image was loaded from, if any (null when loaded from bytes).</summary>
+    public string? SourcePath { get; }
 
     public int FreeSectorCount { get; }
     public int DamagedSectorCount { get; }
     public int UsedSectorCount => SectorCount - FreeSectorCount - DamagedSectorCount;
 
     private MdvCartridge(
+        byte[] image,
+        string? sourcePath,
         string mediumName,
         ushort mediumId,
         IReadOnlyList<MdvFileEntry> files,
         IReadOnlyList<MdvSectorInfo> sectors)
     {
+        _image = image;
+        SourcePath = sourcePath;
         MediumName = mediumName;
         MediumId = mediumId;
         Files = files;
         Sectors = sectors;
         FreeSectorCount = sectors.Count(s => s.State == MdvSectorState.Free);
         DamagedSectorCount = sectors.Count(s => s.State == MdvSectorState.Damaged);
+    }
+
+    /// <summary>The raw MDV image bytes (a copy).</summary>
+    public byte[] ToBytes() => (byte[])_image.Clone();
+
+    /// <summary>Write the image to <paramref name="path"/> as a native .MDV file.</summary>
+    public void Save(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("No output path supplied.", nameof(path));
+        File.WriteAllBytes(path, _image);
     }
 
     /// <summary>Load and inspect an MDV image from disk.</summary>
@@ -57,11 +80,11 @@ public sealed class MdvCartridge
         if (!File.Exists(path))
             throw new FileNotFoundException("Cartridge file not found.", path);
 
-        return LoadMdv(File.ReadAllBytes(path));
+        return LoadMdv(File.ReadAllBytes(path), path);
     }
 
     /// <summary>Load and inspect an MDV image from raw bytes.</summary>
-    public static MdvCartridge LoadMdv(byte[] raw)
+    public static MdvCartridge LoadMdv(byte[] raw, string? sourcePath = null)
     {
         ArgumentNullException.ThrowIfNull(raw);
         if (raw.Length != ImageSize)
@@ -124,7 +147,7 @@ public sealed class MdvCartridge
         }
 
         var files = ReadDirectory(dataBySector, fileNumberOf, fileBlockOf);
-        return new MdvCartridge(mediumName, mediumId, files, sectors);
+        return new MdvCartridge(raw, sourcePath, mediumName, mediumId, files, sectors);
     }
 
     private static List<MdvFileEntry> ReadDirectory(

@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using MdvCore.Mdv;
 using Microsoft.Win32;
@@ -56,5 +58,48 @@ internal static class AppActions
             main.SetCartridgeAvailable(true);
             main.NavigateTo(typeof(CartridgePage));
         }
+    }
+
+    /// <summary>Write the open cartridge to a chosen .MDV path (byte-exact copy of the loaded image).</summary>
+    public static void SaveCartridgeAs()
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null)
+            return;
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save microdrive image as",
+            Filter = "Microdrive image (*.mdv)|*.mdv|All files (*.*)|*.*",
+            FileName = SuggestFileName(cartridge),
+            DefaultExt = ".mdv",
+            AddExtension = true,
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            cartridge.Save(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not save this cartridge:\n\n{ex.Message}",
+                "Save failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private static string SuggestFileName(MdvCartridge cartridge)
+    {
+        if (!string.IsNullOrEmpty(cartridge.SourcePath))
+            return Path.GetFileName(cartridge.SourcePath);
+
+        string name = string.IsNullOrWhiteSpace(cartridge.MediumName) ? "cartridge" : cartridge.MediumName.Trim();
+        string safe = new string(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+        return (string.IsNullOrEmpty(safe) ? "cartridge" : safe) + ".mdv";
     }
 }

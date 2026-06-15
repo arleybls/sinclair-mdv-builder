@@ -27,7 +27,7 @@
             <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Remove" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Save .MDV" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Click="OnNotImplemented" />
+            <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Click="OnSaveAs" />
         </StackPanel>
 
         <Border Grid.Row="3" CornerRadius="8" BorderThickness="1"
