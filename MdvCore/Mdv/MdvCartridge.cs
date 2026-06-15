@@ -31,6 +31,11 @@ public sealed class MdvCartridge
     // write engine exists.
     private readonly byte[] _image;
 
+    // Parsed sector state, kept so a file's bytes can be reassembled on demand.
+    private readonly byte[]?[] _dataBySector;
+    private readonly byte[] _fileNumberOf;
+    private readonly byte[] _fileBlockOf;
+
     public string MediumName { get; }
     public ushort MediumId { get; }
     public IReadOnlyList<MdvFileEntry> Files { get; }
@@ -49,7 +54,10 @@ public sealed class MdvCartridge
         string mediumName,
         ushort mediumId,
         IReadOnlyList<MdvFileEntry> files,
-        IReadOnlyList<MdvSectorInfo> sectors)
+        IReadOnlyList<MdvSectorInfo> sectors,
+        byte[]?[] dataBySector,
+        byte[] fileNumberOf,
+        byte[] fileBlockOf)
     {
         _image = image;
         SourcePath = sourcePath;
@@ -57,8 +65,32 @@ public sealed class MdvCartridge
         MediumId = mediumId;
         Files = files;
         Sectors = sectors;
+        _dataBySector = dataBySector;
+        _fileNumberOf = fileNumberOf;
+        _fileBlockOf = fileBlockOf;
         FreeSectorCount = sectors.Count(s => s.State == MdvSectorState.Free);
         DamagedSectorCount = sectors.Count(s => s.State == MdvSectorState.Damaged);
+    }
+
+    /// <summary>Reassemble and return a file's content bytes (without its 64-byte file header).</summary>
+    public byte[] ReadFileData(MdvFileEntry file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        return ReadFileData(file.FileNumber, file.DataLength);
+    }
+
+    /// <summary>Reassemble and return <paramref name="dataLength"/> content bytes of a file.</summary>
+    public byte[] ReadFileData(byte fileNumber, long dataLength)
+    {
+        byte[] raw = Reassemble(fileNumber);
+
+        // The file's own 64-byte header sits at the start of the first block.
+        long available = Math.Max(0, raw.Length - FileHeaderSize);
+        int length = (int)Math.Clamp(dataLength, 0, available);
+
+        var content = new byte[length];
+        Array.Copy(raw, FileHeaderSize, content, 0, length);
+        return content;
     }
 
     /// <summary>The raw MDV image bytes (a copy).</summary>
@@ -147,7 +179,9 @@ public sealed class MdvCartridge
         }
 
         var files = ReadDirectory(dataBySector, fileNumberOf, fileBlockOf);
-        return new MdvCartridge(raw, sourcePath, mediumName, mediumId, files, sectors);
+        return new MdvCartridge(
+            raw, sourcePath, mediumName, mediumId, files, sectors,
+            dataBySector, fileNumberOf, fileBlockOf);
     }
 
     private static List<MdvFileEntry> ReadDirectory(
@@ -198,6 +232,9 @@ public sealed class MdvCartridge
 
         return files;
     }
+
+    private byte[] Reassemble(byte fileNumber) =>
+        Reassemble(fileNumber, _dataBySector, _fileNumberOf, _fileBlockOf);
 
     /// <summary>Concatenate, in block order, the 512-byte payloads of every sector owning a file.</summary>
     private static byte[] Reassemble(

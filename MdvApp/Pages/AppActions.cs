@@ -60,6 +60,34 @@ internal static class AppActions
         }
     }
 
+    /// <summary>Save the open cartridge back to the file it was loaded from (Save As if unknown).</summary>
+    public static void SaveCartridge()
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null)
+            return;
+
+        if (string.IsNullOrEmpty(cartridge.SourcePath))
+        {
+            SaveCartridgeAs();
+            return;
+        }
+
+        try
+        {
+            cartridge.Save(cartridge.SourcePath);
+            AppState.MarkSaved();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not save this cartridge:\n\n{ex.Message}",
+                "Save failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Write the open cartridge to a chosen .MDV path (byte-exact copy of the loaded image).</summary>
     public static void SaveCartridgeAs()
     {
@@ -82,6 +110,7 @@ internal static class AppActions
         try
         {
             cartridge.Save(dialog.FileName);
+            AppState.MarkSaved();
         }
         catch (Exception ex)
         {

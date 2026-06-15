@@ -4,9 +4,14 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:conv="clr-namespace:MdvApp.Converters"
       mc:Ignorable="d"
       d:DesignHeight="640" d:DesignWidth="980"
       Title="Cartridge">
+    <Page.Resources>
+        <conv:FileKindToSymbolConverter x:Key="FileKindToSymbol" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Page.Resources>
     <Grid Margin="24,8,24,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -27,27 +32,78 @@
             <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Remove" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Click="OnSaveAs" />
+            <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
+            <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
         </StackPanel>
 
-        <Border Grid.Row="3" CornerRadius="8" BorderThickness="1"
-                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-            <DataGrid x:Name="FilesGrid"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal"
-                      Background="Transparent"
-                      BorderThickness="0"
-                      Margin="4">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                    <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="140" />
-                    <DataGridTextColumn Header="Length (bytes)" Binding="{Binding DataLength}" Width="160" />
-                    <DataGridTextColumn Header="Blocks" Binding="{Binding BlockCount}" Width="100" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="320" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <DataGrid x:Name="FilesGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Margin="4"
+                          SelectionMode="Single"
+                          SelectionChanged="OnFileSelected"
+                          MouseDoubleClick="OnFileActivated">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="" Width="40" CanUserResize="False" CanUserSort="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ui:SymbolIcon HorizontalAlignment="Center"
+                                                   Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                        <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="140" />
+                        <DataGridTextColumn Header="Length (bytes)" Binding="{Binding DataLength}" Width="160" />
+                        <DataGridTextColumn Header="Blocks" Binding="{Binding BlockCount}" Width="100" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- File detail panel -->
+            <Border Grid.Column="1" Margin="16,0,0,0" Padding="16" CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <Grid>
+                    <ui:TextBlock x:Name="DetailPlaceholder"
+                                  Text="Select a file to see its details."
+                                  TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+                    <StackPanel x:Name="DetailContent" Visibility="Collapsed" DataContext="{x:Null}">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <ui:SymbolIcon FontSize="28" VerticalAlignment="Center"
+                                           Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
+                            <ui:TextBlock Text="{Binding Name}" FontTypography="Subtitle" Margin="10,0,0,0"
+                                          VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <ui:TextBlock Text="{Binding TypeLabel}" Margin="0,0,0,2"
+                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <ui:TextBlock Text="{Binding DataLength, StringFormat='Length: {0:N0} bytes'}" Margin="0,0,0,2" />
+                        <ui:TextBlock Text="{Binding DataSpace, StringFormat='Data space: {0:N0} bytes'}" Margin="0,0,0,2"
+                                      Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:TextBlock Text="{Binding FileNumber, StringFormat='File number: {0}'}" Margin="0,0,0,2" />
+                        <ui:TextBlock Text="{Binding BlockCount, StringFormat='Blocks: {0}'}" Margin="0,0,0,16" />
+
+                        <ui:Button Content="Show on sector map" Icon="{ui:SymbolIcon Grid24}"
+                                   HorizontalAlignment="Stretch" Click="OnShowOnSectorMap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

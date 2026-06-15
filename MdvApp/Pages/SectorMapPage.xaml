@@ -26,6 +26,8 @@
             <ui:TextBlock Text="Free" Margin="6,0,18,0" VerticalAlignment="Center" />
             <Border Width="14" Height="14" CornerRadius="3" Background="#B03A3A" VerticalAlignment="Center" />
             <ui:TextBlock Text="Damaged" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <ui:TextBlock x:Name="HighlightCaption" VerticalAlignment="Center" Visibility="Collapsed"
+                          Foreground="#F2E64B" />
         </StackPanel>
 
         <ItemsControl Grid.Row="2" x:Name="SectorItems" VerticalAlignment="Top">
@@ -37,6 +39,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border Margin="2" Height="30" CornerRadius="4" Background="{Binding Fill}"
+                            BorderBrush="{Binding BorderBrush}" BorderThickness="{Binding BorderThickness}"
                             ToolTip="{Binding Index, StringFormat='Sector {0}'}">
                         <ui:TextBlock Text="{Binding Index}" FontTypography="Caption"
                                       HorizontalAlignment="Center" VerticalAlignment="Center"

@@ -57,6 +57,19 @@ public class MdvCartridgeLoadTests
 
     [Theory]
     [MemberData(nameof(MdvFixtures))]
+    public void ReadFileData_returns_the_declared_length_for_every_file(string fixture)
+    {
+        var cart = MdvCartridge.Load(Path.Combine(FixturesDir(), fixture));
+
+        foreach (var file in cart.Files)
+        {
+            var data = cart.ReadFileData(file);
+            Assert.Equal(file.DataLength, data.Length);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(MdvFixtures))]
     public void Save_writes_the_image_back_byte_for_byte(string fixture)
     {
         var source = Path.Combine(FixturesDir(), fixture);
