@@ -42,7 +42,7 @@
 
             <!-- Quick actions -->
             <UniformGrid Columns="2" Margin="0,0,0,16">
-                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon Add24}">
+                <ui:CardAction Margin="4" Click="OnNewEmptyCartridge" Icon="{ui:SymbolIcon Add24}">
                     <StackPanel>
                         <ui:TextBlock Text="New Empty Cartridge" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Start an empty 174,930-byte image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />

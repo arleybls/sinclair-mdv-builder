@@ -30,7 +30,7 @@
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-            <ui:Button Content="Import File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnImportFile" />
+            <ui:Button Content="Import File(s)" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnImportFile" />
             <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
             <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
@@ -57,9 +57,11 @@
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           SelectionChanged="OnFileSelected"
                           MouseDoubleClick="OnFileActivated"
-                          PreviewKeyDown="OnFilesPreviewKeyDown">
+                          PreviewKeyDown="OnFilesPreviewKeyDown"
+                          PreparingCellForEdit="OnPreparingNameEdit"
+                          CellEditEnding="OnNameEditEnding">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="" Width="40" CanUserResize="False" CanUserSort="False">
+                        <DataGridTemplateColumn Header="" Width="40" CanUserResize="False" CanUserSort="False" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <ui:SymbolIcon HorizontalAlignment="Center"
@@ -67,13 +69,25 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"
+                        <DataGridTemplateColumn Header="Name" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="2,0,0,0"
+                                               Foreground="{Binding Type, Converter={StaticResource FileTypeBrush}}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox x:Name="NameEditBox" Text="{Binding Name, Mode=OneWay}"
+                                             MaxLength="36" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="140" IsReadOnly="True"
                                             ElementStyle="{StaticResource FileCellText}" />
-                        <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="140"
+                        <DataGridTextColumn Header="Length (bytes)" Binding="{Binding DataLength}" Width="160" IsReadOnly="True"
                                             ElementStyle="{StaticResource FileCellText}" />
-                        <DataGridTextColumn Header="Length (bytes)" Binding="{Binding DataLength}" Width="160"
-                                            ElementStyle="{StaticResource FileCellText}" />
-                        <DataGridTextColumn Header="Blocks" Binding="{Binding BlockCount}" Width="100"
+                        <DataGridTextColumn Header="Blocks" Binding="{Binding BlockCount}" Width="100" IsReadOnly="True"
                                             ElementStyle="{StaticResource FileCellText}" />
                     </DataGrid.Columns>
                 </DataGrid>

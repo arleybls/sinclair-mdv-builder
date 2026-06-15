@@ -134,7 +134,40 @@ public partial class CartridgePage : Page
     private void OnDuplicateFile(object sender, RoutedEventArgs e) =>
         AppActions.DuplicateFile(FilesGrid.SelectedItem as MdvFileEntry);
 
-    private void OnRenameFile(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+    private void OnRenameFile(object sender, RoutedEventArgs e)
+    {
+        if (FilesGrid.SelectedItem is not MdvFileEntry)
+            return;
+
+        // Enable editing only for this explicit rename, then begin editing the Name cell.
+        FilesGrid.IsReadOnly = false;
+        FilesGrid.CurrentCell = new DataGridCellInfo(FilesGrid.SelectedItem, FilesGrid.Columns[1]);
+        FilesGrid.BeginEdit();
+    }
+
+    private void OnPreparingNameEdit(object sender, DataGridPreparingCellForEditEventArgs e)
+    {
+        if (e.EditingElement is TextBox box)
+            Dispatcher.BeginInvoke(
+                new Action(() => { box.Focus(); box.SelectAll(); }),
+                System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void OnNameEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+    {
+        string? newName = e.EditAction == DataGridEditAction.Commit && e.EditingElement is TextBox box
+            ? box.Text
+            : null;
+        var file = e.Row.Item as MdvFileEntry;
+
+        // Defer until the grid finishes its edit transaction, then rebuild / restore read-only.
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            FilesGrid.IsReadOnly = true;
+            if (newName != null && file != null)
+                AppActions.RenameFileTo(file, newName);
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
 
     private void OnDeleteFile(object sender, RoutedEventArgs e) =>
         AppActions.DeleteFile(FilesGrid.SelectedItem as MdvFileEntry);

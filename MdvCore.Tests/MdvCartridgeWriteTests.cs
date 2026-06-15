@@ -99,6 +99,23 @@ public class MdvCartridgeWriteTests
     }
 
     [Fact]
+    public void CreateEmpty_produces_a_blank_loadable_cartridge()
+    {
+        var cart = MdvCartridge.CreateEmpty("BLANK", mediumId: 0x1234);
+
+        Assert.Equal(MdvCartridge.ImageSize, cart.ToBytes().Length);
+        Assert.Equal("BLANK", cart.MediumName);
+        Assert.Equal(0x1234, cart.MediumId);
+        Assert.Empty(cart.Files);
+        Assert.Equal(MdvCartridge.SectorCount, cart.Sectors.Count);
+
+        // A file can be imported into the fresh cartridge and read back.
+        var content = new byte[] { 10, 20, 30, 40 };
+        var updated = cart.ImportFile("HELLO_dat", content);
+        Assert.Equal(content, updated.ReadFileData(updated.FindFile("HELLO_dat")!));
+    }
+
+    [Fact]
     public void Renaming_changes_the_name_and_keeps_the_content()
     {
         var cart = Abacus();

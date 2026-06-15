@@ -23,6 +23,31 @@ internal static class AppActions
             MessageBoxButton.OK,
             MessageBoxImage.Information);
 
+    /// <summary>Create a blank cartridge (prompting for a medium name) and reveal the cartridge sections.</summary>
+    public static void NewEmptyCartridge()
+    {
+        string? name = TextPromptWindow.Ask("New empty cartridge", "Medium name (up to 10 characters):", "EMPTY");
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        try
+        {
+            var cartridge = MdvCartridge.CreateEmpty(name.Trim());
+            AppState.SetCurrent(cartridge, isDirty: true);
+
+            if (Application.Current.MainWindow is MainWindow main)
+            {
+                main.SetCartridgeAvailable(true);
+                main.NavigateTo(typeof(CartridgePage));
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not create the cartridge:\n\n{ex.Message}", "New cartridge",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Prompt for an .MDV file, load it, and reveal the cartridge sections.</summary>
     public static void OpenCartridge()
     {
@@ -122,7 +147,10 @@ internal static class AppActions
         }
     }
 
-    /// <summary>Pick a host file and import it into the open cartridge (handles name clashes and capacity).</summary>
+    /// <summary>
+    /// Pick one or more host files and import as many as fit. Name clashes prompt
+    /// overwrite/rename/cancel; files that don't fit (or can't be read) are reported at the end.
+    /// </summary>
     public static void ImportFile()
     {
         var cartridge = AppState.Current;
@@ -131,67 +159,90 @@ internal static class AppActions
 
         var dialog = new OpenFileDialog
         {
-            Title = "Import file",
+            Title = "Import files",
             Filter = "All files (*.*)|*.*",
             CheckFileExists = true,
+            Multiselect = true,
         };
         if (dialog.ShowDialog() != true)
             return;
 
-        byte[] content;
-        try
-        {
-            content = File.ReadAllBytes(dialog.FileName);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not read the file:\n\n{ex.Message}", "Import failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
+        var current = cartridge;
+        bool imported = false;
+        var omitted = new List<string>();
 
-        string name = MdvCartridge.CleanFileName(Path.GetFileName(dialog.FileName));
-        bool overwrite = false;
-
-        while (cartridge.FindFile(name) != null)
+        foreach (string path in dialog.FileNames)
         {
-            switch (ConflictPromptWindow.Ask(name))
+            string display = Path.GetFileName(path);
+
+            byte[] content;
+            try
             {
-                case ImportConflictResult.Overwrite:
-                    overwrite = true;
-                    break;
-                case ImportConflictResult.Rename:
-                    string? renamed = TextPromptWindow.Ask("Rename file", "New file name:", name);
-                    if (renamed == null)
-                        return;
-                    name = MdvCartridge.CleanFileName(renamed);
-                    continue;
-                default:
-                    return;
+                content = File.ReadAllBytes(path);
             }
-            break;
+            catch (Exception ex)
+            {
+                omitted.Add($"{display} — could not read ({ex.Message})");
+                continue;
+            }
+
+            string name = MdvCartridge.CleanFileName(display);
+            bool overwrite = false;
+            bool skip = false;
+
+            while (current.FindFile(name) != null)
+            {
+                switch (ConflictPromptWindow.Ask(name))
+                {
+                    case ImportConflictResult.Overwrite:
+                        overwrite = true;
+                        break;
+                    case ImportConflictResult.Rename:
+                        string? renamed = TextPromptWindow.Ask("Rename file", "New file name:", name);
+                        if (renamed == null) { skip = true; break; }
+                        name = MdvCartridge.CleanFileName(renamed);
+                        continue;
+                    default:
+                        skip = true;
+                        break;
+                }
+                break;
+            }
+
+            if (skip)
+                continue; // user chose not to import this one
+
+            // Keep going past a file that doesn't fit — a later, smaller file may still fit.
+            if (!current.WouldFit(content.Length, name, overwrite, out _, out _))
+            {
+                omitted.Add($"{display} — not enough free space");
+                continue;
+            }
+
+            try
+            {
+                current = current.ImportFile(name, content, overwrite: overwrite);
+                imported = true;
+            }
+            catch (Exception ex)
+            {
+                omitted.Add($"{display} — {ex.Message}");
+            }
         }
 
-        if (!cartridge.WouldFit(content.Length, name, overwrite, out int needed, out int available))
+        if (imported)
         {
-            MessageBox.Show(
-                $"There isn't enough space to import this file.\n\nIt needs {needed} sectors but only {available} are available.",
-                "Not enough space",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            return;
-        }
-
-        try
-        {
-            var updated = cartridge.ImportFile(name, content, overwrite: overwrite);
-            AppState.SetCurrent(updated, isDirty: true);
+            AppState.SetCurrent(current, isDirty: true);
             (Application.Current.MainWindow as MainWindow)?.SetCartridgeAvailable(true);
         }
-        catch (Exception ex)
+
+        if (omitted.Count > 0)
         {
-            MessageBox.Show($"Could not import the file:\n\n{ex.Message}", "Import failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                "These files were not imported:\n\n" + string.Join("\n", omitted.Select(o => "• " + o)),
+                "Some files were not imported",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
@@ -278,6 +329,37 @@ internal static class AppActions
         while (cartridge.FindFile(candidate) != null)
             candidate = MdvCartridge.CleanFileName(root + "_copy" + n++);
         return candidate;
+    }
+
+    /// <summary>Rename the given file (used by inline editing in the file list).</summary>
+    public static void RenameFileTo(MdvFileEntry file, string newName)
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null)
+            return;
+
+        string clean = MdvCartridge.CleanFileName((newName ?? string.Empty).Trim());
+        if (string.IsNullOrEmpty(clean) || string.Equals(clean, file.Name, StringComparison.Ordinal))
+            return; // empty or unchanged
+
+        var existing = cartridge.FindFile(clean);
+        if (existing != null && !string.Equals(existing.Name, file.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show($"A file named \"{clean}\" already exists.", "Rename",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            var updated = cartridge.RenameFile(file.Name, clean);
+            AppState.SetCurrent(updated, isDirty: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not rename the file:\n\n{ex.Message}", "Rename",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     /// <summary>Confirm, then remove the selected file from the open cartridge.</summary>

@@ -370,6 +370,20 @@ public sealed class MdvCartridge
             dataBySector, fileNumberOf, fileBlockOf);
     }
 
+    /// <summary>
+    /// Create a new, empty cartridge (no files) with the given medium name. Sector 254 is
+    /// reserved as damaged, mirroring a freshly formatted cartridge.
+    /// </summary>
+    public static MdvCartridge CreateEmpty(string mediumName, ushort? mediumId = null)
+    {
+        ushort id = mediumId ?? (ushort)Random.Shared.Next(0, 65536);
+        var damaged = new[] { SectorCount - 1 }; // 254
+        byte[] image = MdvImageBuilder.Build(
+            mediumName ?? string.Empty, id, damaged,
+            Array.Empty<(byte[] Header, byte[] Content)>());
+        return LoadMdv(image, sourcePath: null);
+    }
+
     private static List<MdvFileEntry> ReadDirectory(
         byte[]?[] dataBySector, byte[] fileNumberOf, byte[] fileBlockOf)
     {
