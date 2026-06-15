@@ -20,18 +20,24 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TextBlock Grid.Row="0" Text="Cartridge directory" FontTypography="Title" />
+        <ui:TextBlock Grid.Row="0" Text="Cartridge" FontTypography="Title" Foreground="White" />
         <ui:TextBlock Grid.Row="1" x:Name="MediumNameText" FontTypography="Body" Margin="0,2,0,16"
                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-            <ui:Button Content="New" Icon="{ui:SymbolIcon Add24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Open…" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0" Click="OnOpenCartridge" />
-            <ui:Button Content="Import file" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:DropDownButton Content="New" Icon="{ui:SymbolIcon Add24}" Margin="0,0,8,0">
+                <ui:DropDownButton.Flyout>
+                    <ContextMenu>
+                        <MenuItem Header="File" Click="OnNotImplemented" />
+                        <MenuItem Header="Directory" Click="OnNotImplemented" />
+                    </ContextMenu>
+                </ui:DropDownButton.Flyout>
+            </ui:DropDownButton>
+            <ui:Button Content="Add File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Remove" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:Button Content="Delete" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
             <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
         </StackPanel>
@@ -55,7 +61,8 @@
                           Margin="4"
                           SelectionMode="Single"
                           SelectionChanged="OnFileSelected"
-                          MouseDoubleClick="OnFileActivated">
+                          MouseDoubleClick="OnFileActivated"
+                          PreviewKeyDown="OnFilesPreviewKeyDown">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="" Width="40" CanUserResize="False" CanUserSort="False">
                             <DataGridTemplateColumn.CellTemplate>
@@ -83,21 +90,31 @@
                                   TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"
                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
 
-                    <StackPanel x:Name="DetailContent" Visibility="Collapsed" DataContext="{x:Null}">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <ui:SymbolIcon FontSize="28" VerticalAlignment="Center"
-                                           Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
-                            <ui:TextBlock Text="{Binding Name}" FontTypography="Subtitle" Margin="10,0,0,0"
-                                          VerticalAlignment="Center" TextWrapping="Wrap" />
-                        </StackPanel>
+                    <StackPanel x:Name="DetailContent" Visibility="Collapsed" DataContext="{x:Null}"
+                                TextElement.Foreground="White">
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                        <ui:TextBlock Text="{Binding TypeLabel}" Margin="0,0,0,2"
-                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <ui:TextBlock Text="{Binding DataLength, StringFormat='Length: {0:N0} bytes'}" Margin="0,0,0,2" />
-                        <ui:TextBlock Text="{Binding DataSpace, StringFormat='Data space: {0:N0} bytes'}" Margin="0,0,0,2"
-                                      Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
-                        <ui:TextBlock Text="{Binding FileNumber, StringFormat='File number: {0}'}" Margin="0,0,0,2" />
-                        <ui:TextBlock Text="{Binding BlockCount, StringFormat='Blocks: {0}'}" Margin="0,0,0,16" />
+                            <ui:SymbolIcon Grid.Column="0" FontSize="28" Foreground="White"
+                                           VerticalAlignment="Top" Margin="0,0,10,0"
+                                           Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
+
+                            <StackPanel Grid.Column="1">
+                                <ui:TextBlock Text="{Binding Name}" FontTypography="Subtitle" FontWeight="Bold"
+                                              Foreground="White" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <ui:TextBlock Text="{Binding TypeLabel}" Foreground="White" Margin="0,0,0,2"
+                                              Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
+                                <ui:TextBlock Text="{Binding DataLength, StringFormat='Length: {0:N0} bytes'}" Foreground="White" Margin="0,0,0,2" />
+                                <ui:TextBlock Text="{Binding DataSpace, StringFormat='Data space: {0:N0} bytes'}" Foreground="White" Margin="0,0,0,2"
+                                              Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
+                                <ui:TextBlock Text="{Binding FileNumber, StringFormat='File number: {0}'}" Foreground="White" Margin="0,0,0,2" />
+                                <ui:TextBlock Text="{Binding BlockCount, StringFormat='Blocks: {0}'}" Foreground="White" />
+                                <ui:TextBlock x:Name="ChecksumText" Foreground="White" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
 
                         <ui:Button Content="Show on sector map" Icon="{ui:SymbolIcon Grid24}"
                                    HorizontalAlignment="Stretch" Click="OnShowOnSectorMap" />
