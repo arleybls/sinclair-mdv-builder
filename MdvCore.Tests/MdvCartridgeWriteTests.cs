@@ -99,6 +99,38 @@ public class MdvCartridgeWriteTests
     }
 
     [Fact]
+    public void Renaming_changes_the_name_and_keeps_the_content()
+    {
+        var cart = Abacus();
+        var target = cart.Files.First();
+        var content = cart.ReadFileData(target);
+
+        var updated = cart.RenameFile(target.Name, "GAMES_" + target.Name);
+
+        Assert.Null(updated.FindFile(target.Name));
+        var moved = updated.FindFile("GAMES_" + target.Name);
+        Assert.NotNull(moved);
+        Assert.Equal(content, updated.ReadFileData(moved!));
+        Assert.Equal(cart.Files.Count, updated.Files.Count);
+    }
+
+    [Fact]
+    public void SetFileType_changes_the_type_and_keeps_the_content()
+    {
+        var cart = Abacus();
+        var target = cart.Files.First();
+        var content = cart.ReadFileData(target);
+        byte newType = (byte)(target.IsExecutable ? 0 : 1);
+
+        var updated = cart.SetFileType(target.Name, newType, 0);
+
+        var changed = updated.FindFile(target.Name);
+        Assert.NotNull(changed);
+        Assert.Equal(newType, changed!.TypeCode);
+        Assert.Equal(content, updated.ReadFileData(changed));
+    }
+
+    [Fact]
     public void WouldFit_rejects_a_file_larger_than_the_free_space()
     {
         var cart = Abacus();

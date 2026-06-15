@@ -195,6 +195,38 @@ internal static class AppActions
         }
     }
 
+    /// <summary>Toggle the selected file between executable (type 1) and data (type 0).</summary>
+    public static void ToggleExecutable(MdvFileEntry? file)
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null || file == null)
+            return;
+
+        bool makeExecutable = !file.IsExecutable;
+
+        uint dataSpace = 0;
+        if (makeExecutable)
+        {
+            uint? entered = DataSpacePromptWindow.Ask(file.DataSpace);
+            if (entered == null)
+                return; // cancelled
+            dataSpace = entered.Value;
+        }
+
+        byte typeCode = (byte)(makeExecutable ? 1 : 0);
+
+        try
+        {
+            var updated = cartridge.SetFileType(file.Name, typeCode, dataSpace);
+            AppState.SetCurrent(updated, isDirty: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not change the file type:\n\n{ex.Message}", "Set executable",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Copy the selected file into the cartridge under a new, unique name.</summary>
     public static void DuplicateFile(MdvFileEntry? file)
     {

@@ -45,6 +45,8 @@ public partial class CartridgePage : Page
         if (file == null || AppState.Current is null)
             return;
 
+        SetExecButton.Content = file.IsExecutable ? "Set Data" : "Set Exec";
+
         try
         {
             byte[] data = AppState.Current.ReadFileData(file);
@@ -137,7 +139,8 @@ public partial class CartridgePage : Page
     private void OnDeleteFile(object sender, RoutedEventArgs e) =>
         AppActions.DeleteFile(FilesGrid.SelectedItem as MdvFileEntry);
 
-    private void OnSetExecutable(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+    private void OnSetExecutable(object sender, RoutedEventArgs e) =>
+        AppActions.ToggleExecutable(FilesGrid.SelectedItem as MdvFileEntry);
 
     private void OnNotImplemented(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 

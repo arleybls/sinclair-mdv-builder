@@ -178,6 +178,68 @@ public sealed class MdvCartridge
         return LoadMdv(image, SourcePath);
     }
 
+    /// <summary>
+    /// Return a new cartridge with <paramref name="name"/> renamed to <paramref name="newName"/>.
+    /// Returns the current cartridge unchanged if the source file is not found.
+    /// </summary>
+    public MdvCartridge RenameFile(string name, string newName)
+    {
+        string from = CleanFileName(name);
+        string to = CleanFileName(newName);
+
+        var files = new List<(byte[] Header, byte[] Content)>();
+        bool renamed = false;
+        foreach (var f in Files)
+        {
+            bool isTarget = !renamed && string.Equals(f.Name, from, StringComparison.OrdinalIgnoreCase);
+            if (isTarget)
+                renamed = true;
+
+            files.Add((MdvImageBuilder.BuildFileHeader(
+                isTarget ? to : f.Name, f.TypeCode, f.DataLength, f.DataSpace,
+                f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), ReadFileData(f)));
+        }
+
+        if (!renamed)
+            return this;
+
+        var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        return LoadMdv(image, SourcePath);
+    }
+
+    /// <summary>
+    /// Return a new cartridge with the named file's type (and data space) changed.
+    /// Returns the current cartridge unchanged if the file is not found.
+    /// </summary>
+    public MdvCartridge SetFileType(string name, byte typeCode, uint dataSpace)
+    {
+        string target = CleanFileName(name);
+
+        var files = new List<(byte[] Header, byte[] Content)>();
+        bool changed = false;
+        foreach (var f in Files)
+        {
+            bool isTarget = !changed && string.Equals(f.Name, target, StringComparison.OrdinalIgnoreCase);
+            if (isTarget)
+                changed = true;
+
+            files.Add((MdvImageBuilder.BuildFileHeader(
+                f.Name,
+                isTarget ? typeCode : f.TypeCode,
+                f.DataLength,
+                isTarget ? dataSpace : f.DataSpace,
+                f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), ReadFileData(f)));
+        }
+
+        if (!changed)
+            return this;
+
+        var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        return LoadMdv(image, SourcePath);
+    }
+
     /// <summary>Normalise a host filename into a QL file name (dots become underscores, max 36 chars).</summary>
     public static string CleanFileName(string name)
     {
