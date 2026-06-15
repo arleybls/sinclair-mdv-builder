@@ -13,6 +13,78 @@
                  WindowBackdropType="Mica"
                  WindowCornerPreference="Round"
                  WindowStartupLocation="CenterScreen">
+    <ui:FluentWindow.Resources>
+        <!-- LeftFluent item template that keeps the label visible when selected
+             (the stock LeftFluent template collapses the selected item's text). -->
+        <ControlTemplate x:Key="KeepLabelLeftFluentItemTemplate" TargetType="{x:Type ui:NavigationViewItem}">
+            <Border x:Name="MainBorder"
+                    MinWidth="{DynamicResource PaneFluentButtonWidth}"
+                    Height="{DynamicResource PaneFluentButtonHeight}"
+                    Padding="4" HorizontalAlignment="Stretch" Background="Transparent"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="4">
+                <Grid>
+                    <Rectangle x:Name="ActiveRectangle" Width="3" Height="24" Margin="-4,0,0,0"
+                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                               Fill="{DynamicResource NavigationViewSelectionIndicatorForeground}"
+                               Opacity="0" RadiusX="2" RadiusY="2" />
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ContentPresenter x:Name="IconPresenter" Grid.Row="0"
+                                          Content="{TemplateBinding Icon}"
+                                          TextElement.FontSize="{DynamicResource NavigationViewFluentIconSize}"
+                                          TextElement.Foreground="{DynamicResource NavigationViewItemForegroundLeftFluent}" />
+                        <ContentPresenter x:Name="LabelPresenter" Grid.Row="1" Margin="0,2,0,0"
+                                          HorizontalAlignment="Center"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          RecognizesAccessKey="True"
+                                          TextElement.FontSize="{TemplateBinding FontSize}"
+                                          TextElement.Foreground="{DynamicResource NavigationViewItemForegroundLeftFluent}" />
+                    </Grid>
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsActive" Value="True">
+                    <Setter TargetName="ActiveRectangle" Property="Opacity" Value="1" />
+                    <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelectedLeftFluent}" />
+                    <Setter TargetName="IconPresenter" Property="TextElement.Foreground" Value="{DynamicResource NavigationViewSelectionIndicatorForeground}" />
+                </Trigger>
+                <Trigger Property="Icon" Value="{x:Null}">
+                    <Setter TargetName="IconPresenter" Property="Visibility" Value="Collapsed" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelectedLeftFluent}" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Cartridge icon (Assets/cartridge.svg) as a stroked vector drawing. -->
+        <DrawingImage x:Key="CartridgeIcon">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <!-- Transparent bounds = full 0..24 viewBox so the stroke isn't clipped. -->
+                    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z" />
+                    <GeometryDrawing>
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="1.4" LineJoin="Round"
+                                 StartLineCap="Round" EndLineCap="Round" />
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <PathGeometry Figures="M2.5 4.5H21.5" />
+                                <PathGeometry Figures="M4.5 4.5H19.5V17.1C19.5 17.9401 19.5 18.3601 19.3365 18.681C19.1927 18.9632 18.9632 19.1927 18.681 19.3365C18.3601 19.5 17.9401 19.5 17.1 19.5H6.9C6.05992 19.5 5.63988 19.5 5.31901 19.3365C5.03677 19.1927 4.8073 18.9632 4.66349 18.681C4.5 18.3601 4.5 17.9401 4.5 17.1V4.5Z" />
+                                <PathGeometry Figures="M12 15.5V10" />
+                                <PathGeometry Figures="M9.5 11.5L11.9063 9.57496C11.9611 9.53114 12.0389 9.53114 12.0937 9.57496L14.5 11.5" />
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+    </ui:FluentWindow.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -24,6 +96,7 @@
         <ui:NavigationView Grid.Row="1"
                            x:Name="RootNavigation"
                            PaneDisplayMode="LeftFluent"
+                           ItemTemplate="{StaticResource KeepLabelLeftFluentItemTemplate}"
                            IsBackButtonVisible="Collapsed"
                            IsPaneToggleVisible="False">
             <ui:NavigationView.MenuItems>
@@ -39,7 +112,7 @@
                                        Opacity="0.36"
                                        TargetPageType="{x:Type pages:CartridgePage}">
                     <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Folder24" />
+                        <ui:ImageIcon Width="24" Height="24" Source="{StaticResource CartridgeIcon}" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem x:Name="NavSectorMap"
