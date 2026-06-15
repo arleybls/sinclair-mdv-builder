@@ -1,0 +1,12 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
+# User-specific / IDE
+*.user
+.vs/
+.idea/
+
+# Test results
+[Tt]est[Rr]esults/
+*.trx

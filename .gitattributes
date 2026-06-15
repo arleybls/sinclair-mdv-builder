@@ -1,0 +1,16 @@
+# Treat Microdrive images and archives as binary — never apply EOL conversion,
+# or byte-identical round-trip tests against the golden fixtures will break.
+*.mdv binary
+*.MDV binary
+*.dmp binary
+*.DMP binary
+*.mpd binary
+*.MPD binary
+*.zip binary
+
+# Normalize line endings for source so diffs stay clean across machines.
+*.cs   text eol=crlf
+*.csproj text eol=crlf
+*.sln  text eol=crlf
+*.xaml text eol=crlf
+*.md   text eol=lf
