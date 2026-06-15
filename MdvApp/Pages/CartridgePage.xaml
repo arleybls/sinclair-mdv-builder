@@ -34,8 +34,8 @@
                     </ContextMenu>
                 </ui:DropDownButton.Flyout>
             </ui:DropDownButton>
-            <ui:Button Content="Add File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:Button Content="Import File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
             <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
         </StackPanel>

@@ -14,18 +14,18 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TextBlock Grid.Row="0" Text="Sector map" FontTypography="Title" />
+        <ui:TextBlock Grid.Row="0" Text="Sector map" FontTypography="Title" Foreground="White" />
 
         <!-- Legend -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,16">
             <Border Width="14" Height="14" CornerRadius="3" Background="#4C9AFF" VerticalAlignment="Center" />
-            <ui:TextBlock Text="Map (sector 0)" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <ui:TextBlock Text="Map (sector 0)" Foreground="White" Margin="6,0,18,0" VerticalAlignment="Center" />
             <Border Width="14" Height="14" CornerRadius="3" Background="#3A7A3A" VerticalAlignment="Center" />
-            <ui:TextBlock Text="Used" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <ui:TextBlock Text="Used" Foreground="White" Margin="6,0,18,0" VerticalAlignment="Center" />
             <Border Width="14" Height="14" CornerRadius="3" Background="#3A3A3A" VerticalAlignment="Center" />
-            <ui:TextBlock Text="Free" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <ui:TextBlock Text="Free" Foreground="White" Margin="6,0,18,0" VerticalAlignment="Center" />
             <Border Width="14" Height="14" CornerRadius="3" Background="#B03A3A" VerticalAlignment="Center" />
-            <ui:TextBlock Text="Damaged" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <ui:TextBlock Text="Damaged" Foreground="White" Margin="6,0,18,0" VerticalAlignment="Center" />
             <ui:TextBlock x:Name="HighlightCaption" VerticalAlignment="Center" Visibility="Collapsed"
                           Foreground="#F2E64B" />
             <ui:Button x:Name="ClearHighlightButton" Visibility="Collapsed" Margin="8,0,0,0"
@@ -61,7 +61,7 @@
                         </Border.ToolTip>
                         <ui:TextBlock Text="{Binding Index}" FontTypography="Caption"
                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                      Foreground="#E0E0E0" />
+                                      Foreground="White" />
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
