@@ -36,8 +36,6 @@
             </ui:DropDownButton>
             <ui:Button Content="Add File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Delete" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
             <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
         </StackPanel>
@@ -68,7 +66,7 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <ui:SymbolIcon HorizontalAlignment="Center"
-                                                   Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
+                                                   Symbol="{Binding Type, Converter={StaticResource FileKindToSymbol}}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -100,24 +98,60 @@
 
                             <ui:SymbolIcon Grid.Column="0" FontSize="28" Foreground="White"
                                            VerticalAlignment="Top" Margin="0,0,10,0"
-                                           Symbol="{Binding IsExecutable, Converter={StaticResource FileKindToSymbol}}" />
+                                           Symbol="{Binding Type, Converter={StaticResource FileKindToSymbol}}" />
 
                             <StackPanel Grid.Column="1">
                                 <ui:TextBlock Text="{Binding Name}" FontTypography="Subtitle" FontWeight="Bold"
                                               Foreground="White" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <ui:TextBlock Text="{Binding TypeLabel}" Foreground="White" Margin="0,0,0,2"
-                                              Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
+                                              Visibility="{Binding ShowType, Converter={StaticResource BoolToVisibility}}" />
                                 <ui:TextBlock Text="{Binding DataLength, StringFormat='Length: {0:N0} bytes'}" Foreground="White" Margin="0,0,0,2" />
                                 <ui:TextBlock Text="{Binding DataSpace, StringFormat='Data space: {0:N0} bytes'}" Foreground="White" Margin="0,0,0,2"
                                               Visibility="{Binding IsExecutable, Converter={StaticResource BoolToVisibility}}" />
                                 <ui:TextBlock Text="{Binding FileNumber, StringFormat='File number: {0}'}" Foreground="White" Margin="0,0,0,2" />
                                 <ui:TextBlock Text="{Binding BlockCount, StringFormat='Blocks: {0}'}" Foreground="White" />
                                 <ui:TextBlock x:Name="ChecksumText" Foreground="White" Margin="0,2,0,0" />
+
+                                <Expander Header="QL file header" IsExpanded="False"
+                                          Margin="0,16,0,0" Padding="0" Foreground="White"
+                                          Background="Transparent" BorderThickness="0">
+                                    <StackPanel Margin="12,8,4,8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:TextBlock x:Name="TypeCodeText" Foreground="White"
+                                                          VerticalAlignment="Center" />
+                                            <ui:SymbolIcon Symbol="Info24" FontSize="14" Margin="6,0,0,0"
+                                                           Foreground="White" VerticalAlignment="Center"
+                                                           Cursor="Help" ToolTipService.ShowDuration="20000">
+                                                <ui:SymbolIcon.ToolTip>
+                                                    <ToolTip MaxWidth="360">
+                                                        <TextBlock TextWrapping="Wrap"
+                                                                   Text="QL file type codes:&#10;0 — Data: text, documents and SuperBASIC/SBASIC programs&#10;1 — Executable: compiled machine code (EXEC / EX)&#10;2 — Relocatable: object files (SROFF)&#10;255 — Directory: internal filesystem catalogue" />
+                                                    </ToolTip>
+                                                </ui:SymbolIcon.ToolTip>
+                                            </ui:SymbolIcon>
+                                        </StackPanel>
+                                        <ui:TextBlock x:Name="HeaderInfoText" Foreground="White"
+                                                      TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
                         </Grid>
 
                         <ui:Button Content="Show on sector map" Icon="{ui:SymbolIcon Grid24}"
                                    HorizontalAlignment="Stretch" Click="OnShowOnSectorMap" />
+
+                        <ui:TextBlock Text="File operations" FontTypography="BodyStrong"
+                                      Foreground="White" Margin="0,16,0,8" />
+                        <UniformGrid Columns="2">
+                            <ui:Button Content="Rename" Icon="{ui:SymbolIcon Rename24}"
+                                       HorizontalAlignment="Stretch" Margin="0,0,4,4" Click="OnRenameFile" />
+                            <ui:Button Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                       HorizontalAlignment="Stretch" Margin="4,0,0,4" Click="OnDeleteFile" />
+                            <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}"
+                                       HorizontalAlignment="Stretch" Margin="0,4,4,0" Click="OnExtractFile" />
+                            <ui:Button Content="Set Exec" Icon="{ui:SymbolIcon AppGeneric24}"
+                                       HorizontalAlignment="Stretch" Margin="4,4,0,0" Click="OnSetExecutable" />
+                        </UniformGrid>
                     </StackPanel>
                 </Grid>
             </Border>

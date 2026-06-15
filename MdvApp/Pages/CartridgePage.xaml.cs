@@ -54,6 +54,26 @@ public partial class CartridgePage : Page
         {
             ChecksumText.Text = "CRC-32: unavailable";
         }
+
+        TypeCodeText.Text = $"Type: {file.TypeLabel} (code {file.TypeCode})";
+
+        HeaderInfoText.Text =
+            $"Access: 0x{file.FileAccess:X2}\n" +
+            $"Total length: {file.TotalLength:N0} bytes\n" +
+            $"Data space: {file.DataSpace:N0} bytes\n" +
+            $"Extra info: 0x{file.ExtraInfo:X8}\n" +
+            $"Updated: {FormatQlDate(file.UpdateDate)}\n" +
+            $"Referenced: {FormatQlDate(file.ReferenceDate)}\n" +
+            $"Backed up: {FormatQlDate(file.BackupDate)}";
+    }
+
+    // QL timestamps are seconds since the QDOS epoch, 1961-01-01 00:00:00.
+    private static string FormatQlDate(uint seconds)
+    {
+        if (seconds == 0)
+            return "not set";
+        var epoch = new DateTime(1961, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        return epoch.AddSeconds(seconds).ToString("yyyy-MM-dd HH:mm");
     }
 
     private void OnFileSelected(object sender, SelectionChangedEventArgs e) =>
@@ -80,7 +100,7 @@ public partial class CartridgePage : Page
         try
         {
             byte[] bytes = AppState.Current.ReadFileData(file);
-            new FileViewerWindow(file.Name, bytes, preferHex: file.IsExecutable)
+            new FileViewerWindow(file.Name, bytes, preferHex: file.IsBinary)
             {
                 Owner = Application.Current.MainWindow,
             }.ShowDialog();
@@ -103,6 +123,15 @@ public partial class CartridgePage : Page
         AppState.SetHighlightFile(file.FileNumber);
         (Application.Current.MainWindow as MainWindow)?.NavigateTo(typeof(SectorMapPage));
     }
+
+    private void OnExtractFile(object sender, RoutedEventArgs e) =>
+        AppActions.ExtractFile(FilesGrid.SelectedItem as MdvFileEntry);
+
+    private void OnRenameFile(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+
+    private void OnDeleteFile(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+
+    private void OnSetExecutable(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 
     private void OnNotImplemented(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 

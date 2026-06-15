@@ -14,10 +14,12 @@ public sealed class SectorCellView
     public Brush Fill { get; }
     public Brush BorderBrush { get; }
     public Thickness BorderThickness { get; }
+    public string ToolTip { get; }
 
-    public SectorCellView(MdvSectorInfo sector, bool isHighlighted = false)
+    public SectorCellView(MdvSectorInfo sector, bool isHighlighted = false, string toolTip = "")
     {
         Index = sector.Index;
+        ToolTip = toolTip;
         Fill = sector.State switch
         {
             MdvSectorState.Map => MapBrush,

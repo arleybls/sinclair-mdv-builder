@@ -122,6 +122,37 @@ internal static class AppActions
         }
     }
 
+    /// <summary>Write the selected file's content bytes to a chosen path on the host.</summary>
+    public static void ExtractFile(MdvFileEntry? file)
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null || file == null)
+            return;
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Extract file",
+            FileName = file.Name,
+            Filter = "All files (*.*)|*.*",
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            File.WriteAllBytes(dialog.FileName, cartridge.ReadFileData(file));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not extract this file:\n\n{ex.Message}",
+                "Extract failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     private static string SuggestFileName(MdvCartridge cartridge)
     {
         if (!string.IsNullOrEmpty(cartridge.SourcePath))

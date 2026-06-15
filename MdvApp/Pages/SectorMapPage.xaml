@@ -28,6 +28,9 @@
             <ui:TextBlock Text="Damaged" Margin="6,0,18,0" VerticalAlignment="Center" />
             <ui:TextBlock x:Name="HighlightCaption" VerticalAlignment="Center" Visibility="Collapsed"
                           Foreground="#F2E64B" />
+            <ui:Button x:Name="ClearHighlightButton" Visibility="Collapsed" Margin="8,0,0,0"
+                       Padding="6,2" VerticalAlignment="Center" Click="OnClearHighlight"
+                       ToolTip="Clear highlight" Icon="{ui:SymbolIcon Dismiss24}" />
         </StackPanel>
 
         <ItemsControl Grid.Row="2" x:Name="SectorItems" VerticalAlignment="Top">
@@ -38,9 +41,24 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Margin="2" Height="30" CornerRadius="4" Background="{Binding Fill}"
-                            BorderBrush="{Binding BorderBrush}" BorderThickness="{Binding BorderThickness}"
-                            ToolTip="{Binding Index, StringFormat='Sector {0}'}">
+                    <Border Margin="2" Height="30" CornerRadius="4" Background="{Binding Fill}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{Binding BorderBrush}" />
+                                <Setter Property="BorderThickness" Value="{Binding BorderThickness}" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="BorderBrush" Value="#FFFFFF" />
+                                        <Setter Property="BorderThickness" Value="2" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border.ToolTip>
+                            <ToolTip>
+                                <TextBlock Text="{Binding ToolTip}" />
+                            </ToolTip>
+                        </Border.ToolTip>
                         <ui:TextBlock Text="{Binding Index}" FontTypography="Caption"
                                       HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Foreground="#E0E0E0" />

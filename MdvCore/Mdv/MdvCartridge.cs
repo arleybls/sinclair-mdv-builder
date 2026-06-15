@@ -72,6 +72,15 @@ public sealed class MdvCartridge
         DamagedSectorCount = sectors.Count(s => s.State == MdvSectorState.Damaged);
     }
 
+    /// <summary>The 512-byte data payload of a physical sector, or null if not present.</summary>
+    public byte[]? GetSectorData(int sectorNumber)
+    {
+        if (sectorNumber < 0 || sectorNumber >= _dataBySector.Length)
+            return null;
+        byte[]? data = _dataBySector[sectorNumber];
+        return data == null ? null : (byte[])data.Clone();
+    }
+
     /// <summary>Reassemble and return a file's content bytes (without its 64-byte file header).</summary>
     public byte[] ReadFileData(MdvFileEntry file)
     {
@@ -216,10 +225,15 @@ public sealed class MdvCartridge
             int offset = FileHeaderSize + k * FileHeaderSize;
 
             uint fileLength = ReadBe32(dir, offset + 0);
-            bool isExecutable = dir[offset + 5] == 0x01;
+            byte fileAccess = dir[offset + 4];
+            byte typeCode = dir[offset + 5];
             uint dataSpace = ReadBe32(dir, offset + 6);
+            uint extraInfo = ReadBe32(dir, offset + 10);
             int nameLength = Math.Min(ReadBe16(dir, offset + 14), (ushort)36);
             string name = Encoding.ASCII.GetString(dir, offset + 16, nameLength);
+            uint updateDate = ReadBe32(dir, offset + 52);
+            uint referenceDate = ReadBe32(dir, offset + 56);
+            uint backupDate = ReadBe32(dir, offset + 60);
 
             int blockCount = 0;
             for (int s = 0; s < SectorCount; s++)
@@ -227,7 +241,9 @@ public sealed class MdvCartridge
                     blockCount++;
 
             long dataLength = fileLength >= FileHeaderSize ? fileLength - FileHeaderSize : 0;
-            files.Add(new MdvFileEntry(fileNumber, name, isExecutable, dataLength, dataSpace, blockCount));
+            files.Add(new MdvFileEntry(
+                fileNumber, name, typeCode, dataLength, dataSpace, blockCount,
+                fileAccess, extraInfo, updateDate, referenceDate, backupDate));
         }
 
         return files;
