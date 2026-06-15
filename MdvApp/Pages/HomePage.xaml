@@ -54,7 +54,7 @@
                         <ui:TextBlock Text="Build an image from a ZIP, preserving QL attributes" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ui:CardAction>
-                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon DocumentAdd24}">
+                <ui:CardAction Margin="4" Click="OnNewFromFiles" Icon="{ui:SymbolIcon DocumentAdd24}">
                     <StackPanel>
                         <ui:TextBlock Text="New Cartridge From Files" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Build an image from loose files" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />

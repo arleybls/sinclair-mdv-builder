@@ -163,4 +163,6 @@ public partial class CartridgePage : Page
     private void OnSave(object sender, RoutedEventArgs e) => AppActions.SaveCartridge();
 
     private void OnSaveAs(object sender, RoutedEventArgs e) => AppActions.SaveCartridgeAs();
+
+    private void OnExportToZip(object sender, RoutedEventArgs e) => AppActions.ExportToZip();
 }

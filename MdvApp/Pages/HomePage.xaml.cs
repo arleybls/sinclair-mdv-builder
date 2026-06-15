@@ -14,5 +14,7 @@ public partial class HomePage : Page
 
     private void OnNewEmptyCartridge(object sender, RoutedEventArgs e) => AppActions.NewEmptyCartridge();
 
+    private void OnNewFromFiles(object sender, RoutedEventArgs e) => AppActions.NewCartridgeFromFiles();
+
     private void OnOpenCartridge(object sender, RoutedEventArgs e) => AppActions.OpenCartridge();
 }

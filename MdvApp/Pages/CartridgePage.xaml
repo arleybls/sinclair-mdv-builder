@@ -42,10 +42,21 @@
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-            <ui:Button Content="Import File(s)" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnImportFile" />
-            <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
-            <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
+                <ui:Button Content="Import File(s)" Icon="{ui:SymbolIcon DocumentAdd24}" Click="OnImportFile" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
+                <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnNotImplemented" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
+                <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Click="OnSave" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
+                <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0">
+                <ui:Button Content="Export to ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnExportToZip" />
+            </Border>
         </StackPanel>
 
         <Grid Grid.Row="3">
@@ -150,8 +161,10 @@
                             </StackPanel>
                         </Grid>
 
-                        <ui:Button Content="Show on sector map" Icon="{ui:SymbolIcon Grid24}"
-                                   HorizontalAlignment="Stretch" Click="OnShowOnSectorMap" />
+                        <Border Style="{StaticResource HoverOutline}">
+                            <ui:Button Content="Show on sector map" Icon="{ui:SymbolIcon Grid24}"
+                                       HorizontalAlignment="Stretch" Click="OnShowOnSectorMap" />
+                        </Border>
 
                         <ui:TextBlock Text="File operations" FontTypography="BodyStrong"
                                       Foreground="White" Margin="0,16,0,8" />

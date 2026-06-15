@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Windows;
 using MdvCore.Mdv;
@@ -46,6 +47,96 @@ internal static class AppActions
             MessageBox.Show($"Could not create the cartridge:\n\n{ex.Message}", "New cartridge",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>Create a new cartridge (prompting for a medium name) and pack in chosen host files.</summary>
+    public static void NewCartridgeFromFiles()
+    {
+        string? name = TextPromptWindow.Ask("New cartridge from files", "Medium name (up to 10 characters):", "EMPTY");
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select files to add",
+            Filter = "All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = true,
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        MdvCartridge cartridge;
+        try
+        {
+            cartridge = MdvCartridge.CreateEmpty(name.Trim());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not create the cartridge:\n\n{ex.Message}", "New cartridge",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var omitted = new List<string>();
+        foreach (string path in dialog.FileNames)
+        {
+            string display = Path.GetFileName(path);
+
+            byte[] content;
+            try
+            {
+                content = File.ReadAllBytes(path);
+            }
+            catch (Exception ex)
+            {
+                omitted.Add($"{display} — could not read ({ex.Message})");
+                continue;
+            }
+
+            string fileName = UniqueImportName(cartridge, MdvCartridge.CleanFileName(display));
+            if (!cartridge.WouldFit(content.Length, fileName, overwriteExisting: false, out _, out _))
+            {
+                omitted.Add($"{display} — not enough free space");
+                continue;
+            }
+
+            try
+            {
+                cartridge = cartridge.ImportFile(fileName, content);
+            }
+            catch (Exception ex)
+            {
+                omitted.Add($"{display} — {ex.Message}");
+            }
+        }
+
+        AppState.SetCurrent(cartridge, isDirty: true);
+        if (Application.Current.MainWindow is MainWindow main)
+        {
+            main.SetCartridgeAvailable(true);
+            main.NavigateTo(typeof(CartridgePage));
+        }
+
+        if (omitted.Count > 0)
+        {
+            MessageBox.Show(
+                "These files were not added:\n\n" + string.Join("\n", omitted.Select(o => "• " + o)),
+                "Some files were not added",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private static string UniqueImportName(MdvCartridge cartridge, string baseName)
+    {
+        if (cartridge.FindFile(baseName) == null)
+            return baseName;
+        int n = 2;
+        string candidate;
+        do { candidate = MdvCartridge.CleanFileName($"{baseName}_{n++}"); }
+        while (cartridge.FindFile(candidate) != null);
+        return candidate;
     }
 
     /// <summary>Prompt for an .MDV file, load it, and reveal the cartridge sections.</summary>
@@ -418,6 +509,52 @@ internal static class AppActions
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>Export every file in the open cartridge to a chosen .zip archive.</summary>
+    public static void ExportToZip()
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null)
+            return;
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export to ZIP",
+            Filter = "ZIP archive (*.zip)|*.zip|All files (*.*)|*.*",
+            FileName = SuggestZipName(cartridge),
+            DefaultExt = ".zip",
+            AddExtension = true,
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            using var stream = File.Create(dialog.FileName);
+            using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+            foreach (var file in cartridge.Files)
+            {
+                var entry = zip.CreateEntry(file.Name, CompressionLevel.Optimal);
+                using var entryStream = entry.Open();
+                byte[] data = cartridge.ReadFileData(file);
+                entryStream.Write(data, 0, data.Length);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not export to ZIP:\n\n{ex.Message}", "Export failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string SuggestZipName(MdvCartridge cartridge)
+    {
+        string baseName = !string.IsNullOrEmpty(cartridge.SourcePath)
+            ? Path.GetFileNameWithoutExtension(cartridge.SourcePath)
+            : (string.IsNullOrWhiteSpace(cartridge.MediumName) ? "cartridge" : cartridge.MediumName.Trim());
+        string safe = new string(baseName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+        return (string.IsNullOrEmpty(safe) ? "cartridge" : safe) + ".zip";
     }
 
     private static string SuggestFileName(MdvCartridge cartridge)
