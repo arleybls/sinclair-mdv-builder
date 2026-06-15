@@ -22,7 +22,7 @@
         <!-- Toolbar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
             <ui:Button Content="New" Icon="{ui:SymbolIcon Add24}" Margin="0,0,8,0" Click="OnNotImplemented" />
-            <ui:Button Content="Open…" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:Button Content="Open…" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0" Click="OnOpenCartridge" />
             <ui:Button Content="Import file" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Import ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}" Margin="0,0,8,0" Click="OnNotImplemented" />
@@ -43,9 +43,9 @@
                       Margin="4">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                    <DataGridTextColumn Header="Type" Binding="{Binding KindLabel}" Width="140" />
-                    <DataGridTextColumn Header="Length (bytes)" Binding="{Binding LengthBytes}" Width="160" />
-                    <DataGridTextColumn Header="Blocks" Binding="{Binding Blocks}" Width="100" />
+                    <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="140" />
+                    <DataGridTextColumn Header="Length (bytes)" Binding="{Binding DataLength}" Width="160" />
+                    <DataGridTextColumn Header="Blocks" Binding="{Binding BlockCount}" Width="100" />
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

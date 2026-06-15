@@ -1,0 +1,38 @@
+using System.Windows.Media;
+using MdvCore.Mdv;
+
+namespace MdvApp.Models;
+
+/// <summary>A label/value pair shown on the Media Info page.</summary>
+public sealed record InfoRow(string Label, string Value);
+
+/// <summary>A sector-map cell: index plus the fill colour for its state.</summary>
+public sealed class SectorCellView
+{
+    public int Index { get; }
+    public Brush Fill { get; }
+
+    public SectorCellView(MdvSectorInfo sector)
+    {
+        Index = sector.Index;
+        Fill = sector.State switch
+        {
+            MdvSectorState.Map => MapBrush,
+            MdvSectorState.Used => UsedBrush,
+            MdvSectorState.Damaged => DamagedBrush,
+            _ => FreeBrush,
+        };
+    }
+
+    public static readonly Brush MapBrush = Frozen(0x4C, 0x9A, 0xFF);
+    public static readonly Brush UsedBrush = Frozen(0x3A, 0x7A, 0x3A);
+    public static readonly Brush FreeBrush = Frozen(0x3A, 0x3A, 0x3A);
+    public static readonly Brush DamagedBrush = Frozen(0xB0, 0x3A, 0x3A);
+
+    private static Brush Frozen(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+}

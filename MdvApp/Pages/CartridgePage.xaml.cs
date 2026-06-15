@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using MdvApp.Models;
 
 namespace MdvApp.Pages;
 
@@ -9,9 +8,26 @@ public partial class CartridgePage : Page
     public CartridgePage()
     {
         InitializeComponent();
-        MediumNameText.Text = $"Medium: {CartridgeSampleData.MediumName}  ·  {CartridgeSampleData.Files.Count} files";
-        FilesGrid.ItemsSource = CartridgeSampleData.Files;
+        Loaded += (_, _) => Refresh();
+        Unloaded += (_, _) => AppState.Changed -= Refresh;
+        AppState.Changed += Refresh;
+    }
+
+    private void Refresh()
+    {
+        var cart = AppState.Current;
+        if (cart == null)
+        {
+            MediumNameText.Text = "No cartridge loaded.";
+            FilesGrid.ItemsSource = null;
+            return;
+        }
+
+        MediumNameText.Text = $"Medium: {cart.MediumName}  ·  {cart.Files.Count} files";
+        FilesGrid.ItemsSource = cart.Files;
     }
 
     private void OnNotImplemented(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+
+    private void OnOpenCartridge(object sender, RoutedEventArgs e) => AppActions.OpenCartridge();
 }

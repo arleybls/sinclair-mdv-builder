@@ -40,9 +40,9 @@
                                       TextWrapping="NoWrap" HorizontalAlignment="Left" Margin="0,2,0,8" />
                         <ui:TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#E6F2F2"
                                       Text="Generate, inspect and extract Sinclair QL microdrive images on your PC. Open a cartridge to get started." />
-                        <ui:Button x:Name="OpenCartridgeButton" Content="Open cartridge…" Icon="{ui:SymbolIcon Folder24}"
+                        <ui:Button x:Name="OpenCartridgeButton" Content="Open cartridge…" Icon="{ui:SymbolIcon FolderOpen24}"
                                    Appearance="Primary" Margin="0,16,0,0" HorizontalAlignment="Left"
-                                   Click="OnNotImplemented" />
+                                   Click="OnOpenCartridge" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -55,7 +55,7 @@
                         <ui:TextBlock Text="Start an empty 174,930-byte image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ui:CardAction>
-                <ui:CardAction Margin="8,0,0,0" Click="OnNotImplemented" Icon="{ui:SymbolIcon FolderOpen24}">
+                <ui:CardAction Margin="8,0,0,0" Click="OnOpenCartridge" Icon="{ui:SymbolIcon FolderOpen24}">
                     <StackPanel>
                         <ui:TextBlock Text="Open Cartridge" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Open an existing .MDV image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
