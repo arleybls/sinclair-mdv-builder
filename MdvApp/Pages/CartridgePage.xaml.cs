@@ -86,12 +86,16 @@ public partial class CartridgePage : Page
 
     private void OnFilesPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        // Intercept Enter before the DataGrid's own handling moves to the next row.
-        if (e.Key == System.Windows.Input.Key.Enter)
-        {
-            ActivateSelectedFile();
-            e.Handled = true;
-        }
+        if (e.Key != System.Windows.Input.Key.Enter)
+            return;
+
+        // While inline-renaming (grid temporarily editable), let Enter commit the edit.
+        if (!FilesGrid.IsReadOnly)
+            return;
+
+        // Otherwise Enter opens the selected file in the viewer.
+        ActivateSelectedFile();
+        e.Handled = true;
     }
 
     private void ActivateSelectedFile()
@@ -134,39 +138,18 @@ public partial class CartridgePage : Page
     private void OnDuplicateFile(object sender, RoutedEventArgs e) =>
         AppActions.DuplicateFile(FilesGrid.SelectedItem as MdvFileEntry);
 
+    private void OnInspectFile(object sender, RoutedEventArgs e) => ActivateSelectedFile();
+
     private void OnRenameFile(object sender, RoutedEventArgs e)
     {
-        if (FilesGrid.SelectedItem is not MdvFileEntry)
+        if (FilesGrid.SelectedItem is not MdvFileEntry file)
             return;
 
-        // Enable editing only for this explicit rename, then begin editing the Name cell.
-        FilesGrid.IsReadOnly = false;
-        FilesGrid.CurrentCell = new DataGridCellInfo(FilesGrid.SelectedItem, FilesGrid.Columns[1]);
-        FilesGrid.BeginEdit();
-    }
+        string? newName = TextPromptWindow.Ask("Rename file", "New file name:", file.Name);
+        if (newName == null)
+            return;
 
-    private void OnPreparingNameEdit(object sender, DataGridPreparingCellForEditEventArgs e)
-    {
-        if (e.EditingElement is TextBox box)
-            Dispatcher.BeginInvoke(
-                new Action(() => { box.Focus(); box.SelectAll(); }),
-                System.Windows.Threading.DispatcherPriority.Input);
-    }
-
-    private void OnNameEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-    {
-        string? newName = e.EditAction == DataGridEditAction.Commit && e.EditingElement is TextBox box
-            ? box.Text
-            : null;
-        var file = e.Row.Item as MdvFileEntry;
-
-        // Defer until the grid finishes its edit transaction, then rebuild / restore read-only.
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            FilesGrid.IsReadOnly = true;
-            if (newName != null && file != null)
-                AppActions.RenameFileTo(file, newName);
-        }), System.Windows.Threading.DispatcherPriority.Background);
+        AppActions.RenameFileTo(file, newName);
     }
 
     private void OnDeleteFile(object sender, RoutedEventArgs e) =>
