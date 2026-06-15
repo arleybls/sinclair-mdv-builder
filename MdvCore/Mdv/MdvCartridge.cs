@@ -72,6 +72,121 @@ public sealed class MdvCartridge
         DamagedSectorCount = sectors.Count(s => s.State == MdvSectorState.Damaged);
     }
 
+    /// <summary>Sectors available for file/directory data: 1..254 minus damaged ones.</summary>
+    public int AvailableSectors => (SectorCount - 1) - DamagedSectorCount;
+
+    /// <summary>Find a listed file by name (case-insensitive), or null.</summary>
+    public MdvFileEntry? FindFile(string name)
+    {
+        string clean = CleanFileName(name);
+        return Files.FirstOrDefault(f => string.Equals(f.Name, clean, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether importing <paramref name="contentLength"/> bytes as <paramref name="name"/> fits,
+    /// reporting the sectors needed and available for the resulting file set.
+    /// </summary>
+    public bool WouldFit(long contentLength, string name, bool overwriteExisting, out int needed, out int available)
+    {
+        string clean = CleanFileName(name);
+
+        var lengths = new List<long>();
+        foreach (var f in Files)
+        {
+            if (overwriteExisting && string.Equals(f.Name, clean, StringComparison.OrdinalIgnoreCase))
+                continue;
+            lengths.Add(f.DataLength);
+        }
+        lengths.Add(contentLength);
+
+        int directoryBytes = (lengths.Count + 1) * FileHeaderSize;
+        int blocks = Blocks(directoryBytes);
+        foreach (long len in lengths)
+            blocks += Blocks(len + FileHeaderSize);
+
+        needed = blocks;
+        available = AvailableSectors;
+        return needed <= available;
+    }
+
+    /// <summary>
+    /// Return a new cartridge with <paramref name="content"/> imported as <paramref name="name"/>.
+    /// Replaces an existing same-named file when <paramref name="overwrite"/> is set, otherwise adds it.
+    /// Throws <see cref="MdvInsufficientSpaceException"/> if it does not fit.
+    /// </summary>
+    public MdvCartridge ImportFile(string name, byte[] content, byte typeCode = 0, uint dataSpace = 0, bool overwrite = false)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        string clean = CleanFileName(name);
+
+        var files = new List<(byte[] Header, byte[] Content)>();
+        bool replaced = false;
+
+        foreach (var f in Files)
+        {
+            if (overwrite && string.Equals(f.Name, clean, StringComparison.OrdinalIgnoreCase))
+            {
+                files.Add((MdvImageBuilder.BuildFileHeader(
+                    clean, typeCode, content.Length, dataSpace,
+                    f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), content));
+                replaced = true;
+            }
+            else
+            {
+                files.Add((MdvImageBuilder.BuildFileHeader(
+                    f.Name, f.TypeCode, f.DataLength, f.DataSpace,
+                    f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), ReadFileData(f)));
+            }
+        }
+
+        if (!replaced)
+            files.Add((MdvImageBuilder.BuildFileHeader(clean, typeCode, content.Length, dataSpace, 0, 0, 0, 0, 0), content));
+
+        var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        return LoadMdv(image, SourcePath);
+    }
+
+    /// <summary>
+    /// Return a new cartridge with the named file removed. If no such file exists the current
+    /// cartridge is returned unchanged.
+    /// </summary>
+    public MdvCartridge DeleteFile(string name)
+    {
+        string clean = CleanFileName(name);
+
+        var files = new List<(byte[] Header, byte[] Content)>();
+        bool removed = false;
+        foreach (var f in Files)
+        {
+            if (!removed && string.Equals(f.Name, clean, StringComparison.OrdinalIgnoreCase))
+            {
+                removed = true;
+                continue;
+            }
+
+            files.Add((MdvImageBuilder.BuildFileHeader(
+                f.Name, f.TypeCode, f.DataLength, f.DataSpace,
+                f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), ReadFileData(f)));
+        }
+
+        if (!removed)
+            return this;
+
+        var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        return LoadMdv(image, SourcePath);
+    }
+
+    /// <summary>Normalise a host filename into a QL file name (dots become underscores, max 36 chars).</summary>
+    public static string CleanFileName(string name)
+    {
+        string clean = (name ?? string.Empty).Replace('.', '_');
+        return clean.Length > 36 ? clean[..36] : clean;
+    }
+
+    private static int Blocks(long byteCount) => (int)((byteCount + 511) / 512);
+
     /// <summary>The 512-byte data payload of a physical sector, or null if not present.</summary>
     public byte[]? GetSectorData(int sectorNumber)
     {

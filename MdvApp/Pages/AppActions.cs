@@ -122,6 +122,159 @@ internal static class AppActions
         }
     }
 
+    /// <summary>Pick a host file and import it into the open cartridge (handles name clashes and capacity).</summary>
+    public static void ImportFile()
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null)
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import file",
+            Filter = "All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        byte[] content;
+        try
+        {
+            content = File.ReadAllBytes(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not read the file:\n\n{ex.Message}", "Import failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string name = MdvCartridge.CleanFileName(Path.GetFileName(dialog.FileName));
+        bool overwrite = false;
+
+        while (cartridge.FindFile(name) != null)
+        {
+            switch (ConflictPromptWindow.Ask(name))
+            {
+                case ImportConflictResult.Overwrite:
+                    overwrite = true;
+                    break;
+                case ImportConflictResult.Rename:
+                    string? renamed = TextPromptWindow.Ask("Rename file", "New file name:", name);
+                    if (renamed == null)
+                        return;
+                    name = MdvCartridge.CleanFileName(renamed);
+                    continue;
+                default:
+                    return;
+            }
+            break;
+        }
+
+        if (!cartridge.WouldFit(content.Length, name, overwrite, out int needed, out int available))
+        {
+            MessageBox.Show(
+                $"There isn't enough space to import this file.\n\nIt needs {needed} sectors but only {available} are available.",
+                "Not enough space",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            var updated = cartridge.ImportFile(name, content, overwrite: overwrite);
+            AppState.SetCurrent(updated, isDirty: true);
+            (Application.Current.MainWindow as MainWindow)?.SetCartridgeAvailable(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not import the file:\n\n{ex.Message}", "Import failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Copy the selected file into the cartridge under a new, unique name.</summary>
+    public static void DuplicateFile(MdvFileEntry? file)
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null || file == null)
+            return;
+
+        byte[] content;
+        try
+        {
+            content = cartridge.ReadFileData(file);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not read the file:\n\n{ex.Message}", "Duplicate failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string name = UniqueCopyName(cartridge, file.Name);
+
+        if (!cartridge.WouldFit(content.Length, name, overwriteExisting: false, out int needed, out int available))
+        {
+            MessageBox.Show(
+                $"There isn't enough space to duplicate this file.\n\nIt needs {needed} sectors but only {available} are available.",
+                "Not enough space",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            var updated = cartridge.ImportFile(name, content, file.TypeCode, file.DataSpace, overwrite: false);
+            AppState.SetCurrent(updated, isDirty: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not duplicate the file:\n\n{ex.Message}", "Duplicate failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string UniqueCopyName(MdvCartridge cartridge, string baseName)
+    {
+        string root = MdvCartridge.CleanFileName(baseName);
+        string candidate = MdvCartridge.CleanFileName(root + "_copy");
+        int n = 2;
+        while (cartridge.FindFile(candidate) != null)
+            candidate = MdvCartridge.CleanFileName(root + "_copy" + n++);
+        return candidate;
+    }
+
+    /// <summary>Confirm, then remove the selected file from the open cartridge.</summary>
+    public static void DeleteFile(MdvFileEntry? file)
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null || file == null)
+            return;
+
+        var confirm = MessageBox.Show(
+            $"Delete \"{file.Name}\" from this cartridge?",
+            "Delete file",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var updated = cartridge.DeleteFile(file.Name);
+            AppState.SetCurrent(updated, isDirty: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not delete the file:\n\n{ex.Message}", "Delete failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Write the selected file's content bytes to a chosen path on the host.</summary>
     public static void ExtractFile(MdvFileEntry? file)
     {

@@ -124,12 +124,18 @@ public partial class CartridgePage : Page
         (Application.Current.MainWindow as MainWindow)?.NavigateTo(typeof(SectorMapPage));
     }
 
+    private void OnImportFile(object sender, RoutedEventArgs e) => AppActions.ImportFile();
+
     private void OnExtractFile(object sender, RoutedEventArgs e) =>
         AppActions.ExtractFile(FilesGrid.SelectedItem as MdvFileEntry);
 
+    private void OnDuplicateFile(object sender, RoutedEventArgs e) =>
+        AppActions.DuplicateFile(FilesGrid.SelectedItem as MdvFileEntry);
+
     private void OnRenameFile(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 
-    private void OnDeleteFile(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
+    private void OnDeleteFile(object sender, RoutedEventArgs e) =>
+        AppActions.DeleteFile(FilesGrid.SelectedItem as MdvFileEntry);
 
     private void OnSetExecutable(object sender, RoutedEventArgs e) => AppActions.NotImplemented();
 

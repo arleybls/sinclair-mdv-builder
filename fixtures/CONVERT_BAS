@@ -1,0 +1,43 @@
+1 MODE 4:OPEN#7,"scr":WINDOW#7,512,250,0,0:PAPER#7,2:INK#7,7:CSIZE#7,1,0:CLS#7
+2 DIM tx$(20,14,11),nm(20,4),nn(20,5),tt$(20,23,11)
+3 AT#7,2,20:PRINT#7,"Install File Converter"
+4 AT#7,4,18:PRINT#7,"Copyright  1984 Psion Ltd"
+5 AT#7,8,6:PRINT#7,"Reads an INSTALL_DAT file, in the format of"
+6 AT#7,9,6:PRINT#7,"version 1.0, from a cartridge in Microdrive 2."
+7 AT#7,11,6:PRINT#7,"The data is converted to the new format and saved"
+8 AT#7,12,6:PRINT#7,"as INSTALL_DAT on the cartridge in Microdrive 1."
+9 AT#7,14,6:PRINT#7,"Put a cartridge containing your old INSTALL_DAT"
+10 AT#7,15,6:PRINT#7,"in Microdrive 2 and then press ENTER.":a$=INKEY$(-1)
+11 AT#7,17,6:PRINT#7,"Put a cartridge to contain the new INSTALL_DAT file"
+12 AT#7,18,6:PRINT#7,"in Microdrive 1 and press ENTER":x$=INKEY$(-1)
+13 CLS#7:AT#7,10,10:PRINT#7,"Reading old file from Microdrive 2"
+14 OPEN_IN#5, mdv2_install_dat:INPUT#5, nd:FOR i=0 TO nd
+15 INPUT#5, tx$(i,0):FOR j=1 TO 14
+16 INPUT#5,t$:IF (t$<>CHR$(0)) AND (t$<>CHR$(255)) THEN 
+17 n=xb(CODE(t$(2))):tx$(i,j)=CHR$(n)
+18 FOR k=3 TO 2*n+1 STEP 2:tx$(i,j)=tx$(i,j)&CHR$(16*xb(CODE(t$(k)))+xb(CODE(t$(k+1))))
+19 ELSE :tx$(i,j)=t$
+20 END IF :END FOR j
+21 FOR j=0 TO 4:INPUT#5,t$:nm(i,j)=16*xb(CODE(t$))+xb(CODE(t$(2)))
+22 tt$(i,0)=tx$(i,0):tt$(i,1)="none":tt$(i,2)=tx$(i,1)
+23 FOR j=3 TO 14:tt$(i,j)=tx$(i,j)
+24 FOR j=15 TO 22:tt$(i,j)=CHR$(0)
+25 nn(i,0)=nm(i,0):nn(i,1)=nm(i,2)
+26 nn(i,2)=nm(i,3):nn(i,3)=nm(i,4):nn(i,4)=nm(i,1):nn(i,5)=0:END FOR i
+27 CLOSE#5:AT#7,12,10:PRINT"Saving new file on Microdrive 1":DELETE mdv1_install_dat
+28 OPEN_NEW#5, mdv1_install_dat:PRINT #5,"ins1":PRINT#5,"NONE":PRINT#5, nd
+29 FOR i=0 TO nd
+30 PRINT#5, tt$(i,0):PRINT#5,tt$(i,1):FOR j=2 TO 22
+31 IF (tt$(i,j))=CHR$(0) OR tt$(i,j)=CHR$(255) THEN 
+32 PRINT#5,tt$(i,j)
+33 ELSE :t$="":FOR k=1 TO CODE(tt$(i,j))+1:b=CODE(tt$(i,j)(k)):t$=t$&CHR$(bx(b DIV 16))&CHR$(bx(b MOD 16))
+34 PRINT#5,t$:END IF :END FOR j:
+35 FOR j=0 TO 5:t$="":b=nn(i,j):t$=t$&CHR$(bx(b DIV 16))&CHR$(bx(b MOD 16)):PRINT#5, t$
+36 NEXT i
+37 CLOSE#5:CLOSE#7:CLS#0:CLS#1:CLS#2:STOP
+38 DEFine FuNction bx(n)
+39 RETurn (n+48)
+40 END DEFine 
+41 DEFine FuNction xb(n)
+42 RETurn (n-48)
+43 END DEFine 

@@ -34,7 +34,7 @@
                     </ContextMenu>
                 </ui:DropDownButton.Flyout>
             </ui:DropDownButton>
-            <ui:Button Content="Import File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnNotImplemented" />
+            <ui:Button Content="Import File" Icon="{ui:SymbolIcon DocumentAdd24}" Margin="0,0,8,0" Click="OnImportFile" />
             <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Margin="0,0,8,0" Click="OnNotImplemented" />
             <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Margin="0,0,8,0" Click="OnSave" />
             <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
@@ -144,13 +144,15 @@
                                       Foreground="White" Margin="0,16,0,8" />
                         <UniformGrid Columns="2">
                             <ui:Button Content="Rename" Icon="{ui:SymbolIcon Rename24}"
-                                       HorizontalAlignment="Stretch" Margin="0,0,4,4" Click="OnRenameFile" />
-                            <ui:Button Content="Delete" Icon="{ui:SymbolIcon Delete24}"
-                                       HorizontalAlignment="Stretch" Margin="4,0,0,4" Click="OnDeleteFile" />
+                                       HorizontalAlignment="Stretch" Margin="2" Click="OnRenameFile" />
+                            <ui:Button Content="Duplicate" Icon="{ui:SymbolIcon DocumentCopy24}"
+                                       HorizontalAlignment="Stretch" Margin="2" Click="OnDuplicateFile" />
                             <ui:Button Content="Extract" Icon="{ui:SymbolIcon ArrowExportLtr24}"
-                                       HorizontalAlignment="Stretch" Margin="0,4,4,0" Click="OnExtractFile" />
+                                       HorizontalAlignment="Stretch" Margin="2" Click="OnExtractFile" />
                             <ui:Button Content="Set Exec" Icon="{ui:SymbolIcon AppGeneric24}"
-                                       HorizontalAlignment="Stretch" Margin="4,4,0,0" Click="OnSetExecutable" />
+                                       HorizontalAlignment="Stretch" Margin="2" Click="OnSetExecutable" />
+                            <ui:Button Content="Delete" Icon="{ui:SymbolIcon Delete24}"
+                                       HorizontalAlignment="Stretch" Margin="2" Click="OnDeleteFile" />
                         </UniformGrid>
                     </StackPanel>
                 </Grid>
