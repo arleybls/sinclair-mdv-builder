@@ -55,13 +55,13 @@
         </ControlTemplate>
 
     </ui:FluentWindow.Resources>
-    <Grid>
+    <Grid AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Sinclair MDV Builder" />
+        <ui:TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="Sinclair MDV Builder" />
 
         <ui:NavigationView Grid.Row="1"
                            x:Name="RootNavigation"

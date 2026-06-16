@@ -86,17 +86,39 @@ public partial class CartridgePage : Page
 
     private void OnFilesPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (e.Key != System.Windows.Input.Key.Enter)
-            return;
+        switch (e.Key)
+        {
+            case System.Windows.Input.Key.Enter:
+                ActivateSelectedFile();
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Delete:
+                AppActions.DeleteFile(FilesGrid.SelectedItem as MdvFileEntry);
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.F2:
+                RenameSelected();
+                e.Handled = true;
+                break;
+        }
+    }
 
-        // While inline-renaming (grid temporarily editable), let Enter commit the edit.
-        if (!FilesGrid.IsReadOnly)
-            return;
-
-        // Otherwise Enter opens the selected file in the viewer.
-        ActivateSelectedFile();
+    private void OnFilesDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
+
+    private void OnFilesDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
+        {
+            AppActions.ImportPaths(paths);
+            e.Handled = true; // don't let the shell treat a dropped .mdv as "open"
+        }
+    }
+
+    private void OnExtractAll(object sender, RoutedEventArgs e) => AppActions.ExtractAll();
 
     private void ActivateSelectedFile()
     {
@@ -142,7 +164,9 @@ public partial class CartridgePage : Page
 
     private void OnInspectFile(object sender, RoutedEventArgs e) => ActivateSelectedFile();
 
-    private void OnRenameFile(object sender, RoutedEventArgs e)
+    private void OnRenameFile(object sender, RoutedEventArgs e) => RenameSelected();
+
+    private void RenameSelected()
     {
         if (FilesGrid.SelectedItem is not MdvFileEntry file)
             return;

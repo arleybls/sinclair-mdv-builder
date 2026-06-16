@@ -68,7 +68,7 @@
             </Setter>
         </Style>
     </Page.Resources>
-    <Grid Margin="24,8,24,24">
+    <Grid Margin="24,8,24,24" AllowDrop="True" DragOver="OnFilesDragOver" Drop="OnFilesDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -108,8 +108,11 @@
             <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
                 <ui:Button Content="Save As…" Icon="{ui:SymbolIcon Save24}" Click="OnSaveAs" />
             </Border>
-            <Border Style="{StaticResource HoverOutline}" Margin="0">
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
                 <ui:Button Content="Export to ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnExportToZip" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0">
+                <ui:Button Content="Extract All" Icon="{ui:SymbolIcon ArrowExportLtr24}" Click="OnExtractAll" />
             </Border>
         </StackPanel>
 

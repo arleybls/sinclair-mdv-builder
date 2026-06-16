@@ -215,36 +215,37 @@ internal static class AppActions
     /// <summary>Prompt for an .MDV file, load it, and reveal the cartridge sections.</summary>
     public static void OpenCartridge()
     {
-        if (!ConfirmReplaceCartridge())
-            return;
-
         var dialog = new OpenFileDialog
         {
             Title = "Open microdrive image",
             Filter = "Microdrive image (*.mdv)|*.mdv|All files (*.*)|*.*",
             CheckFileExists = true,
         };
-
         if (dialog.ShowDialog() != true)
+            return;
+
+        OpenPath(dialog.FileName);
+    }
+
+    /// <summary>Open an .MDV from a known path (e.g. drag-and-drop), guarding unsaved changes.</summary>
+    public static void OpenPath(string path)
+    {
+        if (!ConfirmReplaceCartridge())
             return;
 
         MdvCartridge cartridge;
         try
         {
-            cartridge = MdvCartridge.Load(dialog.FileName);
+            cartridge = MdvCartridge.Load(path);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
-                $"Could not open this cartridge:\n\n{ex.Message}",
-                "Open failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            MessageBox.Show($"Could not open this cartridge:\n\n{ex.Message}", "Open failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         AppState.SetCurrent(cartridge);
-
         if (Application.Current.MainWindow is MainWindow main)
         {
             main.SetCartridgeAvailable(true);
@@ -333,9 +334,18 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
+        ImportPaths(dialog.FileNames);
+    }
+
+    /// <summary>Import host files (by path) into the open cartridge — used by the dialog and drag-and-drop.</summary>
+    public static void ImportPaths(IEnumerable<string> paths)
+    {
+        if (AppState.Current == null)
+            return;
+
         var items = new List<ImportEntry>();
         var omitted = new List<string>();
-        foreach (string path in dialog.FileNames)
+        foreach (string path in paths)
         {
             string display = Path.GetFileName(path);
             try { items.Add(new ImportEntry(display, File.ReadAllBytes(path), 0, 0)); }
@@ -343,6 +353,44 @@ internal static class AppActions
         }
 
         ImportItems(items, omitted);
+    }
+
+    /// <summary>Extract every file in the open cartridge to a chosen folder.</summary>
+    public static void ExtractAll()
+    {
+        var cartridge = AppState.Current;
+        if (cartridge == null || cartridge.Files.Count == 0)
+            return;
+
+        var dialog = new OpenFolderDialog { Title = "Extract all files to folder" };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var failed = new List<string>();
+        int extracted = 0;
+        foreach (var file in cartridge.Files)
+        {
+            try
+            {
+                string safe = new string(file.Name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+                if (string.IsNullOrEmpty(safe))
+                    safe = $"file{file.FileNumber}";
+                File.WriteAllBytes(Path.Combine(dialog.FolderName, safe), cartridge.ReadFileData(file));
+                extracted++;
+            }
+            catch (Exception ex)
+            {
+                failed.Add($"{file.Name} — {ex.Message}");
+            }
+        }
+
+        if (failed.Count > 0)
+            MessageBox.Show(
+                $"Extracted {extracted} file(s). These could not be extracted:\n\n" + string.Join("\n", failed.Select(f => "• " + f)),
+                "Extract all", MessageBoxButton.OK, MessageBoxImage.Warning);
+        else
+            MessageBox.Show($"Extracted {extracted} file(s) to:\n{dialog.FolderName}",
+                "Extract all", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary>Import every file entry from a chosen ZIP, restoring QL attributes when present.</summary>
