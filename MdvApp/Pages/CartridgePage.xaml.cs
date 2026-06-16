@@ -132,6 +132,8 @@ public partial class CartridgePage : Page
 
     private void OnImportFile(object sender, RoutedEventArgs e) => AppActions.ImportFile();
 
+    private void OnImportFromZip(object sender, RoutedEventArgs e) => AppActions.ImportFromZip();
+
     private void OnExtractFile(object sender, RoutedEventArgs e) =>
         AppActions.ExtractFile(FilesGrid.SelectedItem as MdvFileEntry);
 

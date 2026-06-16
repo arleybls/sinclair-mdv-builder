@@ -12,6 +12,9 @@ public sealed class MdvCartridge
     public const int SectorSize = 686;
     public const int ImageSize = SectorCount * SectorSize; // 174,930
 
+    /// <summary>Sector allocation strategy used when writing/rebuilding images.</summary>
+    public static MdvSectorStrategy AllocationStrategy { get; set; } = MdvSectorStrategy.Sequential;
+
     // Byte offsets within a 686-byte on-disk sector.
     private const int HeaderOffset = 12;       // after the 12-byte preamble
     private const int RecordOffset = 40;       // preamble(12)+header(16)+preamble(12)
@@ -143,39 +146,114 @@ public sealed class MdvCartridge
             files.Add((MdvImageBuilder.BuildFileHeader(clean, typeCode, content.Length, dataSpace, 0, 0, 0, 0, 0), content));
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
         return LoadMdv(image, SourcePath);
     }
 
     /// <summary>
-    /// Return a new cartridge with the named file removed. If no such file exists the current
-    /// cartridge is returned unchanged.
+    /// Return a new cartridge with the named file removed, freeing only that file's sectors and
+    /// leaving every other file in place (no re-layout). Surviving files numbered above the
+    /// deleted one are renumbered down by one, but keep their physical sectors.
+    /// Returns the current cartridge unchanged if no such file exists.
     /// </summary>
     public MdvCartridge DeleteFile(string name)
     {
-        string clean = CleanFileName(name);
+        var target = FindFile(name);
+        if (target == null)
+            return this;
+        byte deleted = target.FileNumber;
 
-        var files = new List<(byte[] Header, byte[] Content)>();
-        bool removed = false;
-        foreach (var f in Files)
-        {
-            if (!removed && string.Equals(f.Name, clean, StringComparison.OrdinalIgnoreCase))
+        // Work on a copy of the parsed per-sector state.
+        var fileNumberOf = (byte[])_fileNumberOf.Clone();
+        var fileBlockOf = (byte[])_fileBlockOf.Clone();
+        var data = new byte[]?[_dataBySector.Length];
+        for (int s = 0; s < _dataBySector.Length; s++)
+            data[s] = _dataBySector[s] is { } d ? (byte[])d.Clone() : null;
+
+        // Free the deleted file's sectors.
+        for (int s = 0; s < SectorCount; s++)
+            if (fileNumberOf[s] == deleted)
             {
-                removed = true;
-                continue;
+                fileNumberOf[s] = FreeSector;
+                fileBlockOf[s] = 0;
+                data[s] = EmptyData();
             }
 
-            files.Add((MdvImageBuilder.BuildFileHeader(
+        // Renumber surviving real files above the deleted one (labels only; sectors stay put).
+        for (int s = 0; s < SectorCount; s++)
+            if (fileNumberOf[s] > deleted && fileNumberOf[s] < MapFile)
+                fileNumberOf[s]--;
+
+        // Rewrite the directory file (file 0) content into its existing sectors.
+        var survivors = Files.Where(f => f.FileNumber != deleted).ToList();
+        int directoryLength = (survivors.Count + 1) * FileHeaderSize;
+        var directory = new byte[directoryLength];
+        WriteBe32(directory, 0, (uint)directoryLength);
+        for (int i = 0; i < survivors.Count; i++)
+        {
+            var f = survivors[i];
+            byte[] header = MdvImageBuilder.BuildFileHeader(
                 f.Name, f.TypeCode, f.DataLength, f.DataSpace,
-                f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate), ReadFileData(f)));
+                f.FileAccess, f.ExtraInfo, f.UpdateDate, f.ReferenceDate, f.BackupDate);
+            Array.Copy(header, 0, directory, (i + 1) * FileHeaderSize, FileHeaderSize);
         }
 
-        if (!removed)
-            return this;
+        var directorySectors = Enumerable.Range(0, SectorCount)
+            .Where(s => fileNumberOf[s] == DirectoryFile)
+            .OrderBy(s => fileBlockOf[s])
+            .ToList();
+        int directoryBlocks = (directoryLength + SectorDataSize - 1) / SectorDataSize;
+        for (int i = 0; i < directorySectors.Count; i++)
+        {
+            int s = directorySectors[i];
+            if (i < directoryBlocks)
+            {
+                var block = new byte[SectorDataSize];
+                int start = i * SectorDataSize;
+                Array.Copy(directory, start, block, 0, Math.Min(SectorDataSize, directoryLength - start));
+                data[s] = block;
+                fileBlockOf[s] = (byte)i;
+            }
+            else
+            {
+                fileNumberOf[s] = FreeSector; // directory shrank: free the spare block
+                fileBlockOf[s] = 0;
+                data[s] = EmptyData();
+            }
+        }
 
-        var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        // Regenerate sector 0's allocation-map payload from the updated state.
+        var table = new byte[SectorDataSize];
+        int lastAllocated = 0;
+        for (int s = 0; s < SectorCount; s++)
+        {
+            table[s * 2] = fileNumberOf[s];
+            table[s * 2 + 1] = fileBlockOf[s];
+            if (fileNumberOf[s] != FreeSector && fileNumberOf[s] != DamagedSector)
+                lastAllocated = s;
+        }
+        table[510] = 0x01;
+        table[511] = (byte)lastAllocated;
+        data[0] = table;
+
+        byte[] image = MdvImageBuilder.Serialize(MediumName, MediumId, fileNumberOf, fileBlockOf, data);
         return LoadMdv(image, SourcePath);
+    }
+
+    private static byte[] EmptyData()
+    {
+        var d = new byte[SectorDataSize];
+        for (int i = 0; i < SectorDataSize; i++)
+            d[i] = (byte)(i % 2 == 0 ? 0xAA : 0x55);
+        return d;
+    }
+
+    private static void WriteBe32(byte[] b, int o, uint v)
+    {
+        b[o] = (byte)(v >> 24);
+        b[o + 1] = (byte)(v >> 16);
+        b[o + 2] = (byte)(v >> 8);
+        b[o + 3] = (byte)(v & 0xFF);
     }
 
     /// <summary>
@@ -204,7 +282,7 @@ public sealed class MdvCartridge
             return this;
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
         return LoadMdv(image, SourcePath);
     }
 
@@ -236,7 +314,7 @@ public sealed class MdvCartridge
             return this;
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
         return LoadMdv(image, SourcePath);
     }
 
@@ -380,7 +458,7 @@ public sealed class MdvCartridge
         var damaged = new[] { SectorCount - 1 }; // 254
         byte[] image = MdvImageBuilder.Build(
             mediumName ?? string.Empty, id, damaged,
-            Array.Empty<(byte[] Header, byte[] Content)>());
+            Array.Empty<(byte[] Header, byte[] Content)>(), AllocationStrategy);
         return LoadMdv(image, sourcePath: null);
     }
 

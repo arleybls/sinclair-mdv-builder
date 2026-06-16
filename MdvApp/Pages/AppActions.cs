@@ -17,6 +17,27 @@ internal static class AppActions
     public static void Navigate(Type pageType) =>
         (Application.Current.MainWindow as MainWindow)?.NavigateTo(pageType);
 
+    /// <summary>
+    /// Before replacing the current cartridge, offer to save unsaved changes.
+    /// Returns true if the caller may proceed, false if the operation should be cancelled.
+    /// </summary>
+    private static bool ConfirmReplaceCartridge()
+    {
+        if (!AppState.IsDirty)
+            return true;
+
+        switch (UnsavedChangesPromptWindow.Ask())
+        {
+            case UnsavedChangesResult.Save:
+                SaveCartridge();
+                return !AppState.IsDirty; // proceed only if the save actually completed
+            case UnsavedChangesResult.Discard:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static void NotImplemented() =>
         MessageBox.Show(
             "This operation isn't implemented yet.",
@@ -27,6 +48,9 @@ internal static class AppActions
     /// <summary>Create a blank cartridge (prompting for a medium name) and reveal the cartridge sections.</summary>
     public static void NewEmptyCartridge()
     {
+        if (!ConfirmReplaceCartridge())
+            return;
+
         string? name = TextPromptWindow.Ask("New empty cartridge", "Medium name (up to 10 characters):", "EMPTY");
         if (string.IsNullOrWhiteSpace(name))
             return;
@@ -52,6 +76,9 @@ internal static class AppActions
     /// <summary>Create a new cartridge (prompting for a medium name) and pack in chosen host files.</summary>
     public static void NewCartridgeFromFiles()
     {
+        if (!ConfirmReplaceCartridge())
+            return;
+
         string? name = TextPromptWindow.Ask("New cartridge from files", "Medium name (up to 10 characters):", "EMPTY");
         if (string.IsNullOrWhiteSpace(name))
             return;
@@ -66,10 +93,76 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
+        var items = new List<(string Display, byte[] Content)>();
+        var omitted = new List<string>();
+        foreach (string path in dialog.FileNames)
+        {
+            string display = Path.GetFileName(path);
+            try { items.Add((display, File.ReadAllBytes(path))); }
+            catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
+        }
+
+        CreateCartridgeFromItems(name.Trim(), items, omitted);
+    }
+
+    /// <summary>Create a new cartridge (prompting for a medium name) and pack in files from a ZIP.</summary>
+    public static void NewCartridgeFromZip()
+    {
+        if (!ConfirmReplaceCartridge())
+            return;
+
+        string? name = TextPromptWindow.Ask("New cartridge from ZIP", "Medium name (up to 10 characters):", "EMPTY");
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select ZIP archive",
+            Filter = "ZIP archive (*.zip)|*.zip|All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var items = new List<(string Display, byte[] Content)>();
+        var omitted = new List<string>();
+        try
+        {
+            using var zip = ZipFile.OpenRead(dialog.FileName);
+            foreach (var entry in zip.Entries)
+            {
+                if (string.IsNullOrEmpty(entry.Name)) // directory entry
+                    continue;
+                try
+                {
+                    using var entryStream = entry.Open();
+                    using var buffer = new MemoryStream();
+                    entryStream.CopyTo(buffer);
+                    items.Add((entry.Name, buffer.ToArray()));
+                }
+                catch (Exception ex)
+                {
+                    omitted.Add($"{entry.FullName} — could not read ({ex.Message})");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open the ZIP:\n\n{ex.Message}", "New cartridge",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        CreateCartridgeFromItems(name.Trim(), items, omitted);
+    }
+
+    /// <summary>Create an empty cartridge, pack in as many of the given items as fit, then open it.</summary>
+    private static void CreateCartridgeFromItems(string mediumName, List<(string Display, byte[] Content)> items, List<string> omitted)
+    {
         MdvCartridge cartridge;
         try
         {
-            cartridge = MdvCartridge.CreateEmpty(name.Trim());
+            cartridge = MdvCartridge.CreateEmpty(mediumName);
         }
         catch (Exception ex)
         {
@@ -78,22 +171,8 @@ internal static class AppActions
             return;
         }
 
-        var omitted = new List<string>();
-        foreach (string path in dialog.FileNames)
+        foreach (var (display, content) in items)
         {
-            string display = Path.GetFileName(path);
-
-            byte[] content;
-            try
-            {
-                content = File.ReadAllBytes(path);
-            }
-            catch (Exception ex)
-            {
-                omitted.Add($"{display} — could not read ({ex.Message})");
-                continue;
-            }
-
             string fileName = UniqueImportName(cartridge, MdvCartridge.CleanFileName(display));
             if (!cartridge.WouldFit(content.Length, fileName, overwriteExisting: false, out _, out _))
             {
@@ -101,14 +180,8 @@ internal static class AppActions
                 continue;
             }
 
-            try
-            {
-                cartridge = cartridge.ImportFile(fileName, content);
-            }
-            catch (Exception ex)
-            {
-                omitted.Add($"{display} — {ex.Message}");
-            }
+            try { cartridge = cartridge.ImportFile(fileName, content); }
+            catch (Exception ex) { omitted.Add($"{display} — {ex.Message}"); }
         }
 
         AppState.SetCurrent(cartridge, isDirty: true);
@@ -139,9 +212,28 @@ internal static class AppActions
         return candidate;
     }
 
+    /// <summary>Close the current cartridge (offering to save unsaved changes first).</summary>
+    public static void EjectCartridge()
+    {
+        if (AppState.Current == null)
+            return;
+        if (!ConfirmReplaceCartridge())
+            return;
+
+        AppState.SetCurrent(null);
+        if (Application.Current.MainWindow is MainWindow main)
+        {
+            main.SetCartridgeAvailable(false);
+            main.NavigateTo(typeof(HomePage));
+        }
+    }
+
     /// <summary>Prompt for an .MDV file, load it, and reveal the cartridge sections.</summary>
     public static void OpenCartridge()
     {
+        if (!ConfirmReplaceCartridge())
+            return;
+
         var dialog = new OpenFileDialog
         {
             Title = "Open microdrive image",
@@ -244,8 +336,7 @@ internal static class AppActions
     /// </summary>
     public static void ImportFile()
     {
-        var cartridge = AppState.Current;
-        if (cartridge == null)
+        if (AppState.Current == null)
             return;
 
         var dialog = new OpenFileDialog
@@ -258,25 +349,78 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
-        var current = cartridge;
-        bool imported = false;
+        var items = new List<(string Display, byte[] Content)>();
         var omitted = new List<string>();
-
         foreach (string path in dialog.FileNames)
         {
             string display = Path.GetFileName(path);
+            try { items.Add((display, File.ReadAllBytes(path))); }
+            catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
+        }
 
-            byte[] content;
-            try
-            {
-                content = File.ReadAllBytes(path);
-            }
-            catch (Exception ex)
-            {
-                omitted.Add($"{display} — could not read ({ex.Message})");
-                continue;
-            }
+        ImportItems(items, omitted);
+    }
 
+    /// <summary>Import every file entry from a chosen ZIP archive into the open cartridge.</summary>
+    public static void ImportFromZip()
+    {
+        if (AppState.Current == null)
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import from ZIP",
+            Filter = "ZIP archive (*.zip)|*.zip|All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var items = new List<(string Display, byte[] Content)>();
+        var omitted = new List<string>();
+        try
+        {
+            using var zip = ZipFile.OpenRead(dialog.FileName);
+            foreach (var entry in zip.Entries)
+            {
+                if (string.IsNullOrEmpty(entry.Name)) // directory entry
+                    continue;
+                try
+                {
+                    using var entryStream = entry.Open();
+                    using var buffer = new MemoryStream();
+                    entryStream.CopyTo(buffer);
+                    items.Add((entry.Name, buffer.ToArray()));
+                }
+                catch (Exception ex)
+                {
+                    omitted.Add($"{entry.FullName} — could not read ({ex.Message})");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open the ZIP:\n\n{ex.Message}", "Import failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        ImportItems(items, omitted);
+    }
+
+    /// <summary>
+    /// Import a batch of (name, content) items into the open cartridge: resolve name clashes,
+    /// pack in as many as fit, then report anything left out.
+    /// </summary>
+    private static void ImportItems(List<(string Display, byte[] Content)> items, List<string> omitted)
+    {
+        var current = AppState.Current;
+        if (current == null)
+            return;
+
+        bool imported = false;
+        foreach (var (display, content) in items)
+        {
             string name = MdvCartridge.CleanFileName(display);
             bool overwrite = false;
             bool skip = false;
@@ -303,7 +447,7 @@ internal static class AppActions
             if (skip)
                 continue; // user chose not to import this one
 
-            // Keep going past a file that doesn't fit — a later, smaller file may still fit.
+            // Keep going past an item that doesn't fit — a later, smaller one may still fit.
             if (!current.WouldFit(content.Length, name, overwrite, out _, out _))
             {
                 omitted.Add($"{display} — not enough free space");

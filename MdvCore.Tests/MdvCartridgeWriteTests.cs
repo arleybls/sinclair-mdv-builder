@@ -148,6 +148,34 @@ public class MdvCartridgeWriteTests
     }
 
     [Fact]
+    public void Allocation_strategy_changes_layout_but_preserves_content()
+    {
+        var content = Enumerable.Range(0, 4000).Select(i => (byte)(i % 256)).ToArray();
+
+        MdvCartridge.AllocationStrategy = MdvSectorStrategy.Sequential;
+        var seq = MdvCartridge.CreateEmpty("LAYOUT").ImportFile("DATA", content);
+
+        MdvCartridge.AllocationStrategy = MdvSectorStrategy.Spaced;
+        var spaced = MdvCartridge.CreateEmpty("LAYOUT").ImportFile("DATA", content);
+
+        try
+        {
+            // Content is identical regardless of strategy.
+            Assert.Equal(content, seq.ReadFileData(seq.FindFile("DATA")!));
+            Assert.Equal(content, spaced.ReadFileData(spaced.FindFile("DATA")!));
+
+            // But the physical sector layout differs.
+            int[] Used(MdvCartridge c) =>
+                c.Sectors.Where(s => s.State == MdvSectorState.Used).Select(s => s.Index).OrderBy(i => i).ToArray();
+            Assert.NotEqual(Used(seq), Used(spaced));
+        }
+        finally
+        {
+            MdvCartridge.AllocationStrategy = MdvSectorStrategy.Sequential; // restore default
+        }
+    }
+
+    [Fact]
     public void WouldFit_rejects_a_file_larger_than_the_free_space()
     {
         var cart = Abacus();

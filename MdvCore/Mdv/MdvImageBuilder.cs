@@ -40,11 +40,14 @@ internal static class MdvImageBuilder
     /// Build the image. <paramref name="files"/> are the real files (numbers 1..N); each is its
     /// 64-byte header followed by its content. The directory file (number 0) is generated here.
     /// </summary>
+    private const int AllocationStart = 245;
+
     public static byte[] Build(
         string mediumName,
         ushort mediumId,
         IReadOnlyCollection<int> damagedSectors,
-        IReadOnlyList<(byte[] Header, byte[] Content)> files)
+        IReadOnlyList<(byte[] Header, byte[] Content)> files,
+        MdvSectorStrategy strategy)
     {
         // Directory file content: its own 64-byte header (carrying the total length) then one
         // 64-byte header per file.
@@ -83,34 +86,75 @@ internal static class MdvImageBuilder
             if (d > 0 && d < SectorCount)
                 mapFileNumber[d] = DamagedSector;
 
-        var available = new Queue<int>(
-            Enumerable.Range(1, SectorCount - 1).Where(s => mapFileNumber[s] == FreeSector));
+        int freeCount = Enumerable.Range(1, SectorCount - 1).Count(s => mapFileNumber[s] == FreeSector);
 
-        int totalBlocks = units.Sum(u => (u.Length + SectorDataSize - 1) / SectorDataSize);
-        if (totalBlocks > available.Count)
-            throw new MdvInsufficientSpaceException(totalBlocks, available.Count);
-
-        int lastAllocated = SectorCount;
+        // Flatten every file (directory first) into the blocks that must be placed.
+        var blocks = new List<(byte FileNumber, byte Block, byte[] Data)>();
         for (int unit = 0; unit < units.Count; unit++)
         {
             byte fileNumber = (byte)unit;
             byte[] content = units[unit];
-            int blocks = (content.Length + SectorDataSize - 1) / SectorDataSize;
-
-            for (int b = 0; b < blocks; b++)
+            int count = (content.Length + SectorDataSize - 1) / SectorDataSize;
+            for (int b = 0; b < count; b++)
             {
-                int sector = available.Dequeue();
-                var block = new byte[SectorDataSize];
+                var data = new byte[SectorDataSize];
                 int start = b * SectorDataSize;
-                Array.Copy(content, start, block, 0, Math.Min(SectorDataSize, content.Length - start));
-
-                recordData[sector] = block;
-                recordFileNumber[sector] = fileNumber;
-                recordFileBlock[sector] = (byte)b;
-                mapFileNumber[sector] = fileNumber;
-                mapFileBlock[sector] = (byte)b;
-                lastAllocated = sector;
+                Array.Copy(content, start, data, 0, Math.Min(SectorDataSize, content.Length - start));
+                blocks.Add((fileNumber, (byte)b, data));
             }
+        }
+
+        if (blocks.Count > freeCount)
+            throw new MdvInsufficientSpaceException(blocks.Count, freeCount);
+
+        // A sector is allocatable if it is sectors 1..254 and still free in the map.
+        bool IsFree(int s) => s >= 1 && s < SectorCount && mapFileNumber[s] == FreeSector;
+
+        // Sequential packs forward from the start (contiguous low sectors); the others
+        // scan backwards from the high end.
+        int direction = strategy == MdvSectorStrategy.Sequential ? 1 : -1;
+
+        // Find the next free sector starting at <paramref name="from"/>, scanning in 'direction' (wrapping).
+        int FindFree(int from)
+        {
+            int s = from;
+            for (int i = 0; i < SectorCount; i++)
+            {
+                if (s < 0)
+                    s += SectorCount;
+                else if (s >= SectorCount)
+                    s -= SectorCount;
+                if (IsFree(s))
+                    return s;
+                s += direction;
+            }
+            return -1;
+        }
+
+        var random = new Random();
+        int NextStart(int from) => FindFree(strategy switch
+        {
+            MdvSectorStrategy.Sequential => from + 1,
+            MdvSectorStrategy.Spaced => from - 13,
+            MdvSectorStrategy.Random => random.Next(1, SectorCount),
+            _ => from - 1,
+        });
+
+        int lastAllocated = SectorCount;
+        int current = FindFree(strategy == MdvSectorStrategy.Sequential ? 1 : AllocationStart);
+        foreach (var (fileNumber, block, data) in blocks)
+        {
+            if (current < 0)
+                throw new MdvInsufficientSpaceException(blocks.Count, freeCount);
+
+            recordData[current] = data;
+            recordFileNumber[current] = fileNumber;
+            recordFileBlock[current] = block;
+            mapFileNumber[current] = fileNumber;
+            mapFileBlock[current] = block;
+            lastAllocated = current;
+
+            current = NextStart(current);
         }
 
         // Sector 0 payload: the allocation map.
@@ -126,13 +170,25 @@ internal static class MdvImageBuilder
         recordFileNumber[0] = MapFile;
         recordFileBlock[0] = 0;
 
-        // Lay out the image: sector 0 first, then the rest in descending sector-number order.
+        return Serialize(mediumName, mediumId, recordFileNumber, recordFileBlock, recordData);
+    }
+
+    /// <summary>
+    /// Serialise an already-laid-out cartridge (per-sector record state, sector 0 = the map)
+    /// into the 174,930-byte image, recomputing checksums. Sector 0 first, then 254..1.
+    /// </summary>
+    public static byte[] Serialize(
+        string mediumName, ushort mediumId,
+        byte[] recordFileNumber, byte[] recordFileBlock, byte[]?[] recordData)
+    {
         var image = new byte[ImageSize];
         int pos = 0;
-        WriteSector(image, ref pos, 0, mediumName, mediumId, recordFileNumber[0], recordFileBlock[0], recordData[0]);
-        for (int s = SectorCount - 1; s >= 1; s--)
-            WriteSector(image, ref pos, s, mediumName, mediumId, recordFileNumber[s], recordFileBlock[s], recordData[s]);
-
+        for (int order = 0; order < SectorCount; order++)
+        {
+            int s = order == 0 ? 0 : SectorCount - order; // 0, 254, 253, ... 1
+            byte[] data = recordData[s] ?? EmptyPattern();
+            WriteSector(image, ref pos, s, mediumName, mediumId, recordFileNumber[s], recordFileBlock[s], data);
+        }
         return image;
     }
 

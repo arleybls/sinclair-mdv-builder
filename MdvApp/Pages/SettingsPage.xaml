@@ -30,11 +30,22 @@
                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ComboBox x:Name="AllocationCombo" Width="160" SelectedIndex="0">
-                    <ComboBoxItem Content="Sequential" />
-                    <ComboBoxItem Content="Spaced" />
-                    <ComboBoxItem Content="Random" />
-                </ComboBox>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Info24" FontSize="16" Margin="0,0,8,0" Foreground="White"
+                                   VerticalAlignment="Center" Cursor="Help" ToolTipService.ShowDuration="20000">
+                        <ui:SymbolIcon.ToolTip>
+                            <ToolTip MaxWidth="360">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Sector allocation strategy:&#10;Sequential — fill consecutive sectors from the start (contiguous, simplest).&#10;Spaced — step back 13 sectors each block to spread files out.&#10;Random — scatter blocks across random free sectors." />
+                            </ToolTip>
+                        </ui:SymbolIcon.ToolTip>
+                    </ui:SymbolIcon>
+                    <ComboBox x:Name="AllocationCombo" Width="160" SelectionChanged="OnAllocationChanged">
+                        <ComboBoxItem Content="Sequential" />
+                        <ComboBoxItem Content="Spaced" />
+                        <ComboBoxItem Content="Random" />
+                    </ComboBox>
+                </StackPanel>
             </ui:CardControl>
 
             <ui:CardControl Icon="{ui:SymbolIcon Info24}">

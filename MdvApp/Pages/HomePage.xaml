@@ -33,9 +33,12 @@
                                       TextWrapping="NoWrap" HorizontalAlignment="Left" Margin="0,2,0,8" />
                         <ui:TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#E6F2F2"
                                       Text="Generate, inspect and extract Sinclair QL microdrive images on your PC. Open a cartridge to get started." />
-                        <ui:Button x:Name="OpenCartridgeButton" Content="Open cartridge…" Icon="{ui:SymbolIcon FolderOpen24}"
-                                   Appearance="Primary" Margin="0,16,0,0" HorizontalAlignment="Left"
-                                   Click="OnOpenCartridge" />
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <ui:Button x:Name="HeroButton" Content="Open cartridge…" Icon="{ui:SymbolIcon FolderOpen24}"
+                                       Appearance="Primary" Click="OnHeroButton" />
+                            <ui:TextBlock x:Name="CartridgeNameText" VerticalAlignment="Center"
+                                          Margin="12,0,0,0" FontTypography="BodyStrong" Foreground="White" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -48,7 +51,7 @@
                         <ui:TextBlock Text="Start an empty 174,930-byte image" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ui:CardAction>
-                <ui:CardAction Margin="4" Click="OnNotImplemented" Icon="{ui:SymbolIcon FolderZip24}">
+                <ui:CardAction Margin="4" Click="OnNewFromZip" Icon="{ui:SymbolIcon FolderZip24}">
                     <StackPanel>
                         <ui:TextBlock Text="New Cartridge From ZIP" FontTypography="BodyStrong" />
                         <ui:TextBlock Text="Build an image from a ZIP, preserving QL attributes" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />

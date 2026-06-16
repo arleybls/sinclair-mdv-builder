@@ -27,6 +27,42 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <!-- Row style without the selected-row accent pill (which also nudged the
+             row content to the right when selected). -->
+        <Style x:Key="CartridgeRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border x:Name="RowBorder" Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent" BorderThickness="1" CornerRadius="4">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                <DataGridDetailsPresenter Grid.Row="1"
+                                                          Visibility="{TemplateBinding DetailsVisibility}" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background"
+                                        Value="{DynamicResource ListViewItemBackgroundPointerOver}" />
+                                <Setter TargetName="RowBorder" Property="BorderBrush" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background"
+                                        Value="{DynamicResource ListViewItemBackgroundPointerOver}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Page.Resources>
     <Grid Margin="24,8,24,24">
         <Grid.RowDefinitions>
@@ -46,9 +82,23 @@
                 <ui:Button Content="Import File(s)" Icon="{ui:SymbolIcon DocumentAdd24}" Click="OnImportFile" />
             </Border>
             <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
-                <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnNotImplemented" />
+                <ui:Button Content="Import From ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnImportFromZip" />
             </Border>
-            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
+            <Border Margin="0,0,8,0" BorderThickness="1" BorderBrush="Transparent" CornerRadius="4">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <!-- Outline only when hovered AND the Save button is enabled. -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                                    <Condition Binding="{Binding IsEnabled, ElementName=SaveButton}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="BorderBrush" Value="White" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <ui:Button x:Name="SaveButton" Content="Save" Icon="{ui:SymbolIcon Save24}" Appearance="Primary" Click="OnSave" />
             </Border>
             <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
@@ -80,7 +130,8 @@
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           SelectionChanged="OnFileSelected"
                           MouseDoubleClick="OnFileActivated"
-                          PreviewKeyDown="OnFilesPreviewKeyDown">
+                          PreviewKeyDown="OnFilesPreviewKeyDown"
+                          RowStyle="{StaticResource CartridgeRowStyle}">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="" Width="40" CanUserResize="False" CanUserSort="False">
                             <DataGridTemplateColumn.CellTemplate>
