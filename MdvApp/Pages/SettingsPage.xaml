@@ -51,9 +51,23 @@
             <ui:CardControl Icon="{ui:SymbolIcon Info24}">
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock Text="About" FontTypography="BodyStrong" />
-                        <ui:TextBlock x:Name="AboutText"
-                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <ui:TextBlock Text="About" FontTypography="BodyStrong" Foreground="White" />
+                        <ui:TextBlock x:Name="AboutText" Foreground="White" Margin="0,2,0,0" />
+                        <ui:TextBlock Text="© 2026 Arley Silveira. All rights reserved."
+                                      Foreground="White" Margin="0,2,0,0" />
+
+                        <ui:TextBlock Text="Third-party components" FontTypography="BodyStrong"
+                                      Foreground="White" Margin="0,12,0,2" />
+                        <ui:TextBlock TextWrapping="Wrap"
+                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                      Text="WPF-UI — MIT License, © lepo.co (lepoco)&#10;SharpZipLib — MIT License, © ICSharpCode&#10;Fluent System Icons — MIT License, © Microsoft Corporation&#10;.NET / WPF — © Microsoft Corporation" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <ui:TextBlock VerticalAlignment="Center"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                          Text="MDV/DMP/MPD format reference:" />
+                            <ui:HyperlinkButton Content="gusmanb/micropicodrive" Margin="4,0,0,0"
+                                                NavigateUri="https://github.com/gusmanb/micropicodrive" />
+                        </StackPanel>
                     </StackPanel>
                 </ui:CardControl.Header>
             </ui:CardControl>

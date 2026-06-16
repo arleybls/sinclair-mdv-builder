@@ -1,8 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Windows;
+using ICSharpCode.SharpZipLib.Zip;
 using MdvCore.Mdv;
 using Microsoft.Win32;
 
@@ -14,6 +15,13 @@ namespace MdvApp.Pages;
 /// </summary>
 internal static class AppActions
 {
+    // QDOS/SMS ZIP extra-field tag and signatures (qlzip convention) carrying the 64-byte QL header.
+    private const ushort QdosExtraFieldId = 0xFB4A;
+    private const int QlHeaderSize = 64;
+    private const int QlExtraPayloadSize = 8 + QlHeaderSize; // LongID(4) + ExtraID(4) + qdirect(64)
+
+    private readonly record struct ImportEntry(string Display, byte[] Content, byte TypeCode, uint DataSpace);
+
     public static void Navigate(Type pageType) =>
         (Application.Current.MainWindow as MainWindow)?.NavigateTo(pageType);
 
@@ -93,12 +101,12 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
-        var items = new List<(string Display, byte[] Content)>();
+        var items = new List<ImportEntry>();
         var omitted = new List<string>();
         foreach (string path in dialog.FileNames)
         {
             string display = Path.GetFileName(path);
-            try { items.Add((display, File.ReadAllBytes(path))); }
+            try { items.Add(new ImportEntry(display, File.ReadAllBytes(path), 0, 0)); }
             catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
         }
 
@@ -124,40 +132,16 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
-        var items = new List<(string Display, byte[] Content)>();
         var omitted = new List<string>();
-        try
-        {
-            using var zip = ZipFile.OpenRead(dialog.FileName);
-            foreach (var entry in zip.Entries)
-            {
-                if (string.IsNullOrEmpty(entry.Name)) // directory entry
-                    continue;
-                try
-                {
-                    using var entryStream = entry.Open();
-                    using var buffer = new MemoryStream();
-                    entryStream.CopyTo(buffer);
-                    items.Add((entry.Name, buffer.ToArray()));
-                }
-                catch (Exception ex)
-                {
-                    omitted.Add($"{entry.FullName} — could not read ({ex.Message})");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not open the ZIP:\n\n{ex.Message}", "New cartridge",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+        var items = ReadZipEntries(dialog.FileName, omitted);
+        if (items == null)
             return;
-        }
 
         CreateCartridgeFromItems(name.Trim(), items, omitted);
     }
 
     /// <summary>Create an empty cartridge, pack in as many of the given items as fit, then open it.</summary>
-    private static void CreateCartridgeFromItems(string mediumName, List<(string Display, byte[] Content)> items, List<string> omitted)
+    private static void CreateCartridgeFromItems(string mediumName, List<ImportEntry> items, List<string> omitted)
     {
         MdvCartridge cartridge;
         try
@@ -171,17 +155,17 @@ internal static class AppActions
             return;
         }
 
-        foreach (var (display, content) in items)
+        foreach (var item in items)
         {
-            string fileName = UniqueImportName(cartridge, MdvCartridge.CleanFileName(display));
-            if (!cartridge.WouldFit(content.Length, fileName, overwriteExisting: false, out _, out _))
+            string fileName = UniqueImportName(cartridge, MdvCartridge.CleanFileName(item.Display));
+            if (!cartridge.WouldFit(item.Content.Length, fileName, overwriteExisting: false, out _, out _))
             {
-                omitted.Add($"{display} — not enough free space");
+                omitted.Add($"{item.Display} — not enough free space");
                 continue;
             }
 
-            try { cartridge = cartridge.ImportFile(fileName, content); }
-            catch (Exception ex) { omitted.Add($"{display} — {ex.Message}"); }
+            try { cartridge = cartridge.ImportFile(fileName, item.Content, item.TypeCode, item.DataSpace); }
+            catch (Exception ex) { omitted.Add($"{item.Display} — {ex.Message}"); }
         }
 
         AppState.SetCurrent(cartridge, isDirty: true);
@@ -349,19 +333,19 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
-        var items = new List<(string Display, byte[] Content)>();
+        var items = new List<ImportEntry>();
         var omitted = new List<string>();
         foreach (string path in dialog.FileNames)
         {
             string display = Path.GetFileName(path);
-            try { items.Add((display, File.ReadAllBytes(path))); }
+            try { items.Add(new ImportEntry(display, File.ReadAllBytes(path), 0, 0)); }
             catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
         }
 
         ImportItems(items, omitted);
     }
 
-    /// <summary>Import every file entry from a chosen ZIP archive into the open cartridge.</summary>
+    /// <summary>Import every file entry from a chosen ZIP, restoring QL attributes when present.</summary>
     public static void ImportFromZip()
     {
         if (AppState.Current == null)
@@ -376,52 +360,28 @@ internal static class AppActions
         if (dialog.ShowDialog() != true)
             return;
 
-        var items = new List<(string Display, byte[] Content)>();
         var omitted = new List<string>();
-        try
-        {
-            using var zip = ZipFile.OpenRead(dialog.FileName);
-            foreach (var entry in zip.Entries)
-            {
-                if (string.IsNullOrEmpty(entry.Name)) // directory entry
-                    continue;
-                try
-                {
-                    using var entryStream = entry.Open();
-                    using var buffer = new MemoryStream();
-                    entryStream.CopyTo(buffer);
-                    items.Add((entry.Name, buffer.ToArray()));
-                }
-                catch (Exception ex)
-                {
-                    omitted.Add($"{entry.FullName} — could not read ({ex.Message})");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not open the ZIP:\n\n{ex.Message}", "Import failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
+        var items = ReadZipEntries(dialog.FileName, omitted);
+        if (items == null)
+            return; // could not open the archive (error already shown)
 
         ImportItems(items, omitted);
     }
 
     /// <summary>
-    /// Import a batch of (name, content) items into the open cartridge: resolve name clashes,
-    /// pack in as many as fit, then report anything left out.
+    /// Import a batch of items into the open cartridge: resolve name clashes, pack in as many as
+    /// fit (preserving QL type/data-space), then report anything left out.
     /// </summary>
-    private static void ImportItems(List<(string Display, byte[] Content)> items, List<string> omitted)
+    private static void ImportItems(List<ImportEntry> items, List<string> omitted)
     {
         var current = AppState.Current;
         if (current == null)
             return;
 
         bool imported = false;
-        foreach (var (display, content) in items)
+        foreach (var item in items)
         {
-            string name = MdvCartridge.CleanFileName(display);
+            string name = MdvCartridge.CleanFileName(item.Display);
             bool overwrite = false;
             bool skip = false;
 
@@ -448,20 +408,20 @@ internal static class AppActions
                 continue; // user chose not to import this one
 
             // Keep going past an item that doesn't fit — a later, smaller one may still fit.
-            if (!current.WouldFit(content.Length, name, overwrite, out _, out _))
+            if (!current.WouldFit(item.Content.Length, name, overwrite, out _, out _))
             {
-                omitted.Add($"{display} — not enough free space");
+                omitted.Add($"{item.Display} — not enough free space");
                 continue;
             }
 
             try
             {
-                current = current.ImportFile(name, content, overwrite: overwrite);
+                current = current.ImportFile(name, item.Content, item.TypeCode, item.DataSpace, overwrite);
                 imported = true;
             }
             catch (Exception ex)
             {
-                omitted.Add($"{display} — {ex.Message}");
+                omitted.Add($"{item.Display} — {ex.Message}");
             }
         }
 
@@ -676,14 +636,23 @@ internal static class AppActions
         try
         {
             using var stream = File.Create(dialog.FileName);
-            using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+            using var zip = new ZipOutputStream(stream);
+            zip.SetLevel(6);
             foreach (var file in cartridge.Files)
             {
-                var entry = zip.CreateEntry(file.Name, CompressionLevel.Optimal);
-                using var entryStream = entry.Open();
                 byte[] data = cartridge.ReadFileData(file);
-                entryStream.Write(data, 0, data.Length);
+                var entry = new ZipEntry(file.Name)
+                {
+                    DateTime = DateTime.Now,
+                    Size = data.Length,
+                    // QL attributes in the QDOS (0xFB4A) extra field, for QL-aware tools.
+                    ExtraData = BuildQlExtraField(MdvCartridge.BuildQlFileHeader(file)),
+                };
+                zip.PutNextEntry(entry);
+                zip.Write(data, 0, data.Length);
+                zip.CloseEntry();
             }
+            zip.Finish();
         }
         catch (Exception ex)
         {
@@ -699,6 +668,80 @@ internal static class AppActions
             : (string.IsNullOrWhiteSpace(cartridge.MediumName) ? "cartridge" : cartridge.MediumName.Trim());
         string safe = new string(baseName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
         return (string.IsNullOrEmpty(safe) ? "cartridge" : safe) + ".zip";
+    }
+
+    /// <summary>Read a ZIP's file entries (with QL attributes when present). Returns null on open error.</summary>
+    private static List<ImportEntry>? ReadZipEntries(string path, List<string> omitted)
+    {
+        var items = new List<ImportEntry>();
+        try
+        {
+            using var zip = new ZipFile(path);
+            foreach (ZipEntry entry in zip)
+            {
+                if (!entry.IsFile)
+                    continue;
+                try
+                {
+                    using var input = zip.GetInputStream(entry);
+                    using var buffer = new MemoryStream();
+                    input.CopyTo(buffer);
+
+                    string display = Path.GetFileName(entry.Name);
+                    (byte typeCode, uint dataSpace) = ReadQlExtraField(entry.ExtraData);
+                    items.Add(new ImportEntry(display, buffer.ToArray(), typeCode, dataSpace));
+                }
+                catch (Exception ex)
+                {
+                    omitted.Add($"{entry.Name} — could not read ({ex.Message})");
+                }
+            }
+            return items;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open the ZIP:\n\n{ex.Message}", "Import failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return null;
+        }
+    }
+
+    /// <summary>Build the QDOS (0xFB4A) ZIP extra-field block wrapping a 64-byte QL header.</summary>
+    private static byte[] BuildQlExtraField(byte[] qlHeader)
+    {
+        var field = new byte[4 + QlExtraPayloadSize];
+        field[0] = (byte)(QdosExtraFieldId & 0xFF);   // tag (little-endian)
+        field[1] = (byte)(QdosExtraFieldId >> 8);
+        field[2] = (byte)(QlExtraPayloadSize & 0xFF); // data size (little-endian)
+        field[3] = (byte)(QlExtraPayloadSize >> 8);
+        System.Text.Encoding.ASCII.GetBytes("QZHD").CopyTo(field, 4);  // LongID
+        System.Text.Encoding.ASCII.GetBytes("QDOS").CopyTo(field, 8);  // ExtraID
+        Array.Copy(qlHeader, 0, field, 12, QlHeaderSize);
+        return field;
+    }
+
+    /// <summary>Scan a ZIP extra-data block for the QDOS field and read the QL type / data-space.</summary>
+    private static (byte TypeCode, uint DataSpace) ReadQlExtraField(byte[]? extra)
+    {
+        if (extra == null)
+            return (0, 0);
+
+        int i = 0;
+        while (i + 4 <= extra.Length)
+        {
+            int id = extra[i] | (extra[i + 1] << 8);
+            int size = extra[i + 2] | (extra[i + 3] << 8);
+            int dataStart = i + 4;
+            if (dataStart + size > extra.Length)
+                break;
+
+            // The QL header (qdirect) follows the 8-byte LongID/ExtraID prefix.
+            if (id == QdosExtraFieldId && size >= QlExtraPayloadSize)
+                return MdvCartridge.ReadQlFileHeader(extra.AsSpan(dataStart + 8, QlHeaderSize));
+
+            i = dataStart + size;
+        }
+        return (0, 0);
     }
 
     private static string SuggestFileName(MdvCartridge cartridge)

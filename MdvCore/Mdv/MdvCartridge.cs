@@ -318,6 +318,25 @@ public sealed class MdvCartridge
         return LoadMdv(image, SourcePath);
     }
 
+    /// <summary>Build the 64-byte QL file header for a file (used for QL-aware ZIP export).</summary>
+    public static byte[] BuildQlFileHeader(MdvFileEntry file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        return MdvImageBuilder.BuildFileHeader(
+            file.Name, file.TypeCode, file.DataLength, file.DataSpace,
+            file.FileAccess, file.ExtraInfo, file.UpdateDate, file.ReferenceDate, file.BackupDate);
+    }
+
+    /// <summary>Read the file type and data-space from a 64-byte QL file header (big-endian fields).</summary>
+    public static (byte TypeCode, uint DataSpace) ReadQlFileHeader(ReadOnlySpan<byte> header)
+    {
+        if (header.Length < 64)
+            return (0, 0);
+        byte typeCode = header[5];
+        uint dataSpace = (uint)((header[6] << 24) | (header[7] << 16) | (header[8] << 8) | header[9]);
+        return (typeCode, dataSpace);
+    }
+
     /// <summary>Normalise a host filename into a QL file name (dots become underscores, max 36 chars).</summary>
     public static string CleanFileName(string name)
     {

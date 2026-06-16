@@ -176,6 +176,20 @@ public class MdvCartridgeWriteTests
     }
 
     [Fact]
+    public void Ql_file_header_round_trips_type_and_data_space()
+    {
+        var entry = new MdvFileEntry(
+            FileNumber: 1, Name: "GAME", TypeCode: 1, DataLength: 1000, DataSpace: 4096, BlockCount: 2,
+            FileAccess: 0, ExtraInfo: 0, UpdateDate: 0, ReferenceDate: 0, BackupDate: 0);
+
+        byte[] header = MdvCartridge.BuildQlFileHeader(entry);
+        var (typeCode, dataSpace) = MdvCartridge.ReadQlFileHeader(header);
+
+        Assert.Equal((byte)1, typeCode);
+        Assert.Equal(4096u, dataSpace);
+    }
+
+    [Fact]
     public void WouldFit_rejects_a_file_larger_than_the_free_space()
     {
         var cart = Abacus();
