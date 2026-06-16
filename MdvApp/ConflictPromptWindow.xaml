@@ -18,7 +18,7 @@
         <ui:TitleBar Grid.Row="0" Title="File already exists" />
 
         <StackPanel Grid.Row="1" Margin="20,8,20,20">
-            <ui:TextBlock x:Name="MessageText" TextWrapping="Wrap" Foreground="White" Margin="0,0,0,20" />
+            <ui:TextBlock x:Name="MessageText" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,20" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <ui:Button Content="Overwrite" Appearance="Primary" Margin="0,0,8,0" Click="OnOverwrite" />
                 <ui:Button Content="Rename" Margin="0,0,8,0" Click="OnRename" />

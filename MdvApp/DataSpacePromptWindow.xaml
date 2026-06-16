@@ -18,9 +18,9 @@
         <ui:TitleBar Grid.Row="0" Title="Set executable" />
 
         <StackPanel Grid.Row="1" Margin="20,8,20,20">
-            <ui:TextBlock Foreground="White" TextWrapping="Wrap" Margin="0,0,0,8"
+            <ui:TextBlock Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8"
                           Text="Executable files carry a data-space size (bytes) reserved when the program runs." />
-            <ui:TextBlock Text="Data space (bytes):" Foreground="White" Margin="0,0,0,4" />
+            <ui:TextBlock Text="Data space (bytes):" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,4" />
             <ui:NumberBox x:Name="DataSpaceBox" Minimum="0" Maximum="16777215" SmallChange="1024" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
                 <ui:Button Content="Apply" Appearance="Primary" Margin="0,0,8,0" Click="OnApply" />

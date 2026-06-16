@@ -31,7 +31,7 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:SymbolIcon Symbol="Info24" FontSize="16" Margin="0,0,8,0" Foreground="White"
+                    <ui:SymbolIcon Symbol="Info24" FontSize="16" Margin="0,0,8,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                    VerticalAlignment="Center" Cursor="Help" ToolTipService.ShowDuration="20000">
                         <ui:SymbolIcon.ToolTip>
                             <ToolTip MaxWidth="360">
@@ -51,23 +51,22 @@
             <ui:CardControl Icon="{ui:SymbolIcon Info24}">
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock Text="About" FontTypography="BodyStrong" Foreground="White" />
-                        <ui:TextBlock x:Name="AboutText" Foreground="White" Margin="0,2,0,0" />
+                        <ui:TextBlock Text="About" FontTypography="BodyStrong" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <ui:TextBlock x:Name="AboutText" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,2,0,0" />
                         <ui:TextBlock Text="© 2026 Arley Silveira. All rights reserved."
-                                      Foreground="White" Margin="0,2,0,0" />
+                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,2,0,0" />
 
                         <ui:TextBlock Text="Third-party components" FontTypography="BodyStrong"
-                                      Foreground="White" Margin="0,12,0,2" />
+                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,12,0,2" />
                         <ui:TextBlock TextWrapping="Wrap"
                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                       Text="WPF-UI — MIT License, © lepo.co (lepoco)&#10;SharpZipLib — MIT License, © ICSharpCode&#10;Fluent System Icons — MIT License, © Microsoft Corporation&#10;.NET / WPF — © Microsoft Corporation" />
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                            <ui:TextBlock VerticalAlignment="Center"
-                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                          Text="MDV/DMP/MPD format reference:" />
-                            <ui:HyperlinkButton Content="gusmanb/micropicodrive" Margin="4,0,0,0"
-                                                NavigateUri="https://github.com/gusmanb/micropicodrive" />
-                        </StackPanel>
+                        <ui:TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
+                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                            <Run Text="MDV/DMP/MPD format reference: " /><Hyperlink
+                                NavigateUri="https://github.com/gusmanb/micropicodrive"
+                                RequestNavigate="OnRequestNavigate">gusmanb/micropicodrive</Hyperlink>
+                        </ui:TextBlock>
                     </StackPanel>
                 </ui:CardControl.Header>
             </ui:CardControl>

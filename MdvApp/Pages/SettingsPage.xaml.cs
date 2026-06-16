@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Navigation;
 using MdvCore.Mdv;
 using Wpf.Ui.Appearance;
 
@@ -17,6 +19,12 @@ public partial class SettingsPage : Page
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0";
         AboutText.Text = $"Sinclair MDV Builder · v{version}";
+    }
+
+    private void OnRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
     }
 
     private void OnAllocationChanged(object sender, SelectionChangedEventArgs e)
