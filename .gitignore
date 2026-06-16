@@ -10,3 +10,7 @@
 # Test results
 [Tt]est[Rr]esults/
 *.trx
+
+# Misc
+*.lnk
+publish/

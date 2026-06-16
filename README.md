@@ -90,7 +90,7 @@ F2 rename · Delete remove.
 
 ## Licensing & copyright
 
-Copyright © 2026 Arley Silveira. All rights reserved.
+Copyright © 2026 Arley Silveira. Released under the **MIT License** — see [LICENSE](LICENSE).
 
 This project bundles or builds upon the following third-party components, used under their
 respective licenses:
