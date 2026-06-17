@@ -10,6 +10,14 @@ library, over a GUI-free format engine (`MdvCore`).
 
 ---
 
+## Screenshots
+
+| Home | Browsing a cartridge |
+|:---:|:---:|
+| [![The Home screen](docs/home.png)](docs/home.png) | [![A cartridge's file listing](docs/cartridge.png)](docs/cartridge.png) |
+
+---
+
 ## Features
 
 - **Create cartridges**
@@ -82,6 +90,9 @@ The published `MdvApp.exe` is written under `MdvApp/bin/Release/net8.0-windows/w
 3. Select a file to see its details; double-click (or Enter / Inspect) to view its contents;
    use Rename / Duplicate / Extract / Set Exec / Delete in the detail panel.
 4. **Sector Map** and **Media Info** show the layout and properties of the open cartridge.
+
+You can also open an image directly by passing its path on the command line
+(`mdv-builder.exe path\to\image.mdv`) or by associating `.mdv` files with the app.
 
 **Shortcuts:** Ctrl+O open · Ctrl+N new · Ctrl+S save · Ctrl+Shift+S save as · Enter inspect ·
 F2 rename · Delete remove.
