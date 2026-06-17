@@ -15,12 +15,35 @@ namespace MdvApp.Pages;
 /// </summary>
 internal static class AppActions
 {
-    // QDOS/SMS ZIP extra-field tag and signatures (qlzip convention) carrying the 64-byte QL header.
-    private const ushort QdosExtraFieldId = 0xFB4A;
-    private const int QlHeaderSize = 64;
-    private const int QlExtraPayloadSize = 8 + QlHeaderSize; // LongID(4) + ExtraID(4) + qdirect(64)
-
     private readonly record struct ImportEntry(string Display, byte[] Content, byte TypeCode, uint DataSpace);
+
+    // No single file can occupy more than the data sectors (1..254) hold, so anything larger can
+    // never fit. Checking the size first avoids reading a huge file fully into memory just to reject it.
+    private const long MaxImportBytes = (MdvCartridge.SectorCount - 1) * 512L;
+
+    /// <summary>
+    /// Read a host file for import, rejecting (without loading it) anything too large to ever fit.
+    /// Adds a reason to <paramref name="omitted"/> and returns null when the file is skipped.
+    /// </summary>
+    private static byte[]? ReadImportFile(string path, List<string> omitted)
+    {
+        string display = Path.GetFileName(path);
+        try
+        {
+            long size = new FileInfo(path).Length;
+            if (size > MaxImportBytes)
+            {
+                omitted.Add($"{display} — too large ({size:N0} bytes; a cartridge holds at most {MaxImportBytes:N0})");
+                return null;
+            }
+            return File.ReadAllBytes(path);
+        }
+        catch (Exception ex)
+        {
+            omitted.Add($"{display} — could not read ({ex.Message})");
+            return null;
+        }
+    }
 
     public static void Navigate(Type pageType) =>
         (Application.Current.MainWindow as MainWindow)?.NavigateTo(pageType);
@@ -105,9 +128,9 @@ internal static class AppActions
         var omitted = new List<string>();
         foreach (string path in dialog.FileNames)
         {
-            string display = Path.GetFileName(path);
-            try { items.Add(new ImportEntry(display, File.ReadAllBytes(path), 0, 0)); }
-            catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
+            byte[]? content = ReadImportFile(path, omitted);
+            if (content != null)
+                items.Add(new ImportEntry(Path.GetFileName(path), content, 0, 0));
         }
 
         CreateCartridgeFromItems(name.Trim(), items, omitted);
@@ -347,9 +370,9 @@ internal static class AppActions
         var omitted = new List<string>();
         foreach (string path in paths)
         {
-            string display = Path.GetFileName(path);
-            try { items.Add(new ImportEntry(display, File.ReadAllBytes(path), 0, 0)); }
-            catch (Exception ex) { omitted.Add($"{display} — could not read ({ex.Message})"); }
+            byte[]? content = ReadImportFile(path, omitted);
+            if (content != null)
+                items.Add(new ImportEntry(Path.GetFileName(path), content, 0, 0));
         }
 
         ImportItems(items, omitted);
@@ -694,7 +717,7 @@ internal static class AppActions
                     DateTime = DateTime.Now,
                     Size = data.Length,
                     // QL attributes in the QDOS (0xFB4A) extra field, for QL-aware tools.
-                    ExtraData = BuildQlExtraField(MdvCartridge.BuildQlFileHeader(file)),
+                    ExtraData = QlZip.BuildQlExtraField(MdvCartridge.BuildQlFileHeader(file)),
                 };
                 zip.PutNextEntry(entry);
                 zip.Write(data, 0, data.Length);
@@ -736,7 +759,7 @@ internal static class AppActions
                     input.CopyTo(buffer);
 
                     string display = Path.GetFileName(entry.Name);
-                    (byte typeCode, uint dataSpace) = ReadQlExtraField(entry.ExtraData);
+                    (byte typeCode, uint dataSpace) = QlZip.ReadQlExtraField(entry.ExtraData);
                     items.Add(new ImportEntry(display, buffer.ToArray(), typeCode, dataSpace));
                 }
                 catch (Exception ex)
@@ -752,44 +775,6 @@ internal static class AppActions
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return null;
         }
-    }
-
-    /// <summary>Build the QDOS (0xFB4A) ZIP extra-field block wrapping a 64-byte QL header.</summary>
-    private static byte[] BuildQlExtraField(byte[] qlHeader)
-    {
-        var field = new byte[4 + QlExtraPayloadSize];
-        field[0] = (byte)(QdosExtraFieldId & 0xFF);   // tag (little-endian)
-        field[1] = (byte)(QdosExtraFieldId >> 8);
-        field[2] = (byte)(QlExtraPayloadSize & 0xFF); // data size (little-endian)
-        field[3] = (byte)(QlExtraPayloadSize >> 8);
-        System.Text.Encoding.ASCII.GetBytes("QZHD").CopyTo(field, 4);  // LongID
-        System.Text.Encoding.ASCII.GetBytes("QDOS").CopyTo(field, 8);  // ExtraID
-        Array.Copy(qlHeader, 0, field, 12, QlHeaderSize);
-        return field;
-    }
-
-    /// <summary>Scan a ZIP extra-data block for the QDOS field and read the QL type / data-space.</summary>
-    private static (byte TypeCode, uint DataSpace) ReadQlExtraField(byte[]? extra)
-    {
-        if (extra == null)
-            return (0, 0);
-
-        int i = 0;
-        while (i + 4 <= extra.Length)
-        {
-            int id = extra[i] | (extra[i + 1] << 8);
-            int size = extra[i + 2] | (extra[i + 3] << 8);
-            int dataStart = i + 4;
-            if (dataStart + size > extra.Length)
-                break;
-
-            // The QL header (qdirect) follows the 8-byte LongID/ExtraID prefix.
-            if (id == QdosExtraFieldId && size >= QlExtraPayloadSize)
-                return MdvCartridge.ReadQlFileHeader(extra.AsSpan(dataStart + 8, QlHeaderSize));
-
-            i = dataStart + size;
-        }
-        return (0, 0);
     }
 
     private static string SuggestFileName(MdvCartridge cartridge)

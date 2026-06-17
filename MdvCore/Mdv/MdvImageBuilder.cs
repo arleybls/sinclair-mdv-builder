@@ -47,7 +47,8 @@ internal static class MdvImageBuilder
         ushort mediumId,
         IReadOnlyCollection<int> damagedSectors,
         IReadOnlyList<(byte[] Header, byte[] Content)> files,
-        MdvSectorStrategy strategy)
+        MdvSectorStrategy strategy,
+        int? seed = null)
     {
         // Directory file content: its own 64-byte header (carrying the total length) then one
         // 64-byte header per file.
@@ -131,7 +132,8 @@ internal static class MdvImageBuilder
             return -1;
         }
 
-        var random = new Random();
+        // Seeded only when a caller needs deterministic Random-strategy output (e.g. tests).
+        var random = seed.HasValue ? new Random(seed.Value) : new Random();
         int NextStart(int from) => FindFree(strategy switch
         {
             MdvSectorStrategy.Sequential => from + 1,

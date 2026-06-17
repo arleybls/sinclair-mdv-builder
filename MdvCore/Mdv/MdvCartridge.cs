@@ -15,6 +15,12 @@ public sealed class MdvCartridge
     /// <summary>Sector allocation strategy used when writing/rebuilding images.</summary>
     public static MdvSectorStrategy AllocationStrategy { get; set; } = MdvSectorStrategy.Sequential;
 
+    /// <summary>
+    /// Optional seed for the <see cref="MdvSectorStrategy.Random"/> strategy. Null (the default)
+    /// uses a fresh, unseeded RNG; set it only to make Random-strategy output reproducible (tests).
+    /// </summary>
+    public static int? AllocationSeed { get; set; }
+
     // Byte offsets within a 686-byte on-disk sector.
     private const int HeaderOffset = 12;       // after the 12-byte preamble
     private const int RecordOffset = 40;       // preamble(12)+header(16)+preamble(12)
@@ -146,7 +152,7 @@ public sealed class MdvCartridge
             files.Add((MdvImageBuilder.BuildFileHeader(clean, typeCode, content.Length, dataSpace, 0, 0, 0, 0, 0), content));
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy, AllocationSeed);
         return LoadMdv(image, SourcePath);
     }
 
@@ -282,7 +288,7 @@ public sealed class MdvCartridge
             return this;
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy, AllocationSeed);
         return LoadMdv(image, SourcePath);
     }
 
@@ -314,7 +320,7 @@ public sealed class MdvCartridge
             return this;
 
         var damaged = Sectors.Where(s => s.State == MdvSectorState.Damaged).Select(s => s.Index).ToList();
-        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy);
+        byte[] image = MdvImageBuilder.Build(MediumName, MediumId, damaged, files, AllocationStrategy, AllocationSeed);
         return LoadMdv(image, SourcePath);
     }
 
@@ -378,6 +384,51 @@ public sealed class MdvCartridge
 
     /// <summary>The raw MDV image bytes (a copy).</summary>
     public byte[] ToBytes() => (byte[])_image.Clone();
+
+    /// <summary>
+    /// Recompute every sector's stored checksums (header, record, data, and the fixed extra-bytes
+    /// checksum) and report whether they all match. Load is intentionally lenient and never calls
+    /// this; use it to detect a corrupt-but-well-formed image. Returns true if all sectors verify.
+    /// </summary>
+    public bool VerifyChecksums() => FirstChecksumError() == null;
+
+    /// <summary>
+    /// Like <see cref="VerifyChecksums"/>, but returns the index of the first sector whose checksum
+    /// does not match, or null when the whole image verifies.
+    /// </summary>
+    public int? FirstChecksumError()
+    {
+        for (int s = 0; s < SectorCount; s++)
+        {
+            int b = s * SectorSize;
+            if (_image[b + HeaderOffset] != 0xFF)
+                continue; // not a valid written sector
+
+            // Header checksum: sum of the 14 header bytes + 0x0F0F, little-endian at +14.
+            int headerSum = 0;
+            for (int i = 0; i < 14; i++)
+                headerSum += _image[b + HeaderOffset + i];
+            if (ReadLe16(_image, b + HeaderOffset + 14) != ((headerSum + 0x0F0F) & 0xFFFF))
+                return s;
+
+            // Record header checksum: fileNumber + fileBlock + 0x0F0F, little-endian at +2.
+            int recordSum = _image[b + RecordOffset] + _image[b + RecordOffset + 1];
+            if (ReadLe16(_image, b + RecordOffset + 2) != ((recordSum + 0x0F0F) & 0xFFFF))
+                return s;
+
+            // Data checksum: sum of the 512 data bytes + 0x0F0F, little-endian just after the data.
+            int dataSum = 0;
+            for (int i = 0; i < SectorDataSize; i++)
+                dataSum += _image[b + RecordDataOffset + i];
+            if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize) != ((dataSum + 0x0F0F) & 0xFFFF))
+                return s;
+
+            // Extra-bytes checksum: the fixed constant 0x3B19, after the 84 extra bytes.
+            if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize + 2 + 84) != 0x3B19)
+                return s;
+        }
+        return null;
+    }
 
     /// <summary>Write the image to <paramref name="path"/> as a native .MDV file.</summary>
     public void Save(string path)
@@ -477,7 +528,7 @@ public sealed class MdvCartridge
         var damaged = new[] { SectorCount - 1 }; // 254
         byte[] image = MdvImageBuilder.Build(
             mediumName ?? string.Empty, id, damaged,
-            Array.Empty<(byte[] Header, byte[] Content)>(), AllocationStrategy);
+            Array.Empty<(byte[] Header, byte[] Content)>(), AllocationStrategy, AllocationSeed);
         return LoadMdv(image, sourcePath: null);
     }
 
@@ -563,6 +614,8 @@ public sealed class MdvCartridge
     }
 
     private static ushort ReadBe16(byte[] b, int o) => (ushort)((b[o] << 8) | b[o + 1]);
+
+    private static ushort ReadLe16(byte[] b, int o) => (ushort)(b[o] | (b[o + 1] << 8));
 
     private static uint ReadBe32(byte[] b, int o) =>
         (uint)((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]);
