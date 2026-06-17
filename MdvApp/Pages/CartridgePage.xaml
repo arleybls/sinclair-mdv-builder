@@ -19,7 +19,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <!-- Wrapper that shows a 1px white outline on hover. -->
+        <!-- Wrapper that shows a 1px outline on hover (white in dark mode, near-black in light). -->
         <Style x:Key="HoverOutline" TargetType="Border">
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -27,7 +27,7 @@
             <Setter Property="Margin" Value="2" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="White" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -56,7 +56,7 @@
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="RowBorder" Property="Background"
                                         Value="{DynamicResource ListViewItemBackgroundPointerOver}" />
-                                <Setter TargetName="RowBorder" Property="BorderBrush" Value="White" />
+                                <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="RowBorder" Property="Background"
@@ -98,7 +98,7 @@
                                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
                                     <Condition Binding="{Binding IsEnabled, ElementName=SaveButton}" Value="True" />
                                 </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderBrush" Value="White" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>

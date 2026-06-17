@@ -49,7 +49,7 @@
                 </Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelectedLeftFluent}" />
-                    <Setter TargetName="MainBorder" Property="BorderBrush" Value="White" />
+                    <Setter TargetName="MainBorder" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                 </Trigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
