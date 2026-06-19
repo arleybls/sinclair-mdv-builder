@@ -41,10 +41,12 @@ public class MdvCartridgeLoadTests
             Assert.InRange(file.FileNumber, (byte)1, (byte)0xF7);
         }
 
-        // File numbers are the directory order 1..N.
-        Assert.Equal(
-            Enumerable.Range(1, cart.Files.Count).Select(i => (byte)i),
-            cart.Files.Select(f => f.FileNumber));
+        // File numbers follow directory order: strictly ascending and distinct. Gaps are allowed
+        // — a cartridge that has had files deleted keeps the surviving slot numbers (e.g. MDV1.MDV
+        // lists #1 and #4), so they are not necessarily a contiguous 1..N.
+        var numbers = cart.Files.Select(f => (int)f.FileNumber).ToList();
+        Assert.Equal(numbers.OrderBy(n => n).ToList(), numbers);
+        Assert.Equal(numbers.Count, numbers.Distinct().Count());
     }
 
     [Fact]

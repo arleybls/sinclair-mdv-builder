@@ -376,6 +376,8 @@ public sealed class MdvCartridge
         // The file's own 64-byte header sits at the start of the first block.
         long available = Math.Max(0, raw.Length - FileHeaderSize);
         int length = (int)Math.Clamp(dataLength, 0, available);
+        if (length == 0)
+            return Array.Empty<byte>(); // no content (or no allocated blocks): nothing past the header
 
         var content = new byte[length];
         Array.Copy(raw, FileHeaderSize, content, 0, length);
@@ -564,6 +566,12 @@ public sealed class MdvCartridge
             int offset = FileHeaderSize + k * FileHeaderSize;
 
             uint fileLength = ReadBe32(dir, offset + 0);
+            // An empty/deleted directory slot has no real file: its length is below the 64-byte
+            // header. Skip it (but keep the file-number tied to the slot index so surviving files
+            // still match their sectors in the allocation map).
+            if (fileLength < FileHeaderSize)
+                continue;
+
             byte fileAccess = dir[offset + 4];
             byte typeCode = dir[offset + 5];
             uint dataSpace = ReadBe32(dir, offset + 6);
