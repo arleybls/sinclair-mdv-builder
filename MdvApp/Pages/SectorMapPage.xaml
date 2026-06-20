@@ -26,6 +26,8 @@
             <ui:TextBlock Text="Free" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="6,0,18,0" VerticalAlignment="Center" />
             <Border Width="14" Height="14" CornerRadius="3" Background="#B03A3A" VerticalAlignment="Center" />
             <ui:TextBlock Text="Damaged" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="6,0,18,0" VerticalAlignment="Center" />
+            <Border Width="14" Height="14" CornerRadius="3" Background="#E07A1E" VerticalAlignment="Center" />
+            <ui:TextBlock Text="Verify error" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="6,0,18,0" VerticalAlignment="Center" />
             <ui:TextBlock x:Name="HighlightCaption" VerticalAlignment="Center" Visibility="Collapsed"
                           Foreground="#F2E64B" />
             <ui:Button x:Name="ClearHighlightButton" Visibility="Collapsed" Margin="8,0,0,0"

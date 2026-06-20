@@ -282,6 +282,8 @@ public class MdvCartridgeEdgeCaseTests
         var reloaded = MdvCartridge.LoadMdv(minerva);
         Assert.False(reloaded.VerifyChecksums());                 // now a sector fails verify
         Assert.NotNull(reloaded.FirstChecksumError());
+        // Exactly sector 13 (by logical sector number) is the one that fails — what the map shows.
+        Assert.Equal(new[] { 13 }, reloaded.SectorsFailingVerify().OrderBy(n => n).ToArray());
         // The damaged sector is #13, so its data no longer reads back intact, but the rest is fine:
         // the other file's content is untouched.
         Assert.Equal(cart.ReadFileData(cart.FindFile("F")!), reloaded.ReadFileData(reloaded.FindFile("F")!));

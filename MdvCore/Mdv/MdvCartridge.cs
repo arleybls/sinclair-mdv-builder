@@ -403,33 +403,57 @@ public sealed class MdvCartridge
         for (int s = 0; s < SectorCount; s++)
         {
             int b = s * SectorSize;
-            if (_image[b + HeaderOffset] != 0xFF)
-                continue; // not a valid written sector
-
-            // Header checksum: sum of the 14 header bytes + 0x0F0F, little-endian at +14.
-            int headerSum = 0;
-            for (int i = 0; i < 14; i++)
-                headerSum += _image[b + HeaderOffset + i];
-            if (ReadLe16(_image, b + HeaderOffset + 14) != ((headerSum + 0x0F0F) & 0xFFFF))
-                return s;
-
-            // Record header checksum: fileNumber + fileBlock + 0x0F0F, little-endian at +2.
-            int recordSum = _image[b + RecordOffset] + _image[b + RecordOffset + 1];
-            if (ReadLe16(_image, b + RecordOffset + 2) != ((recordSum + 0x0F0F) & 0xFFFF))
-                return s;
-
-            // Data checksum: sum of the 512 data bytes + 0x0F0F, little-endian just after the data.
-            int dataSum = 0;
-            for (int i = 0; i < SectorDataSize; i++)
-                dataSum += _image[b + RecordDataOffset + i];
-            if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize) != ((dataSum + 0x0F0F) & 0xFFFF))
-                return s;
-
-            // Extra-bytes checksum: the fixed constant 0x3B19, after the 84 extra bytes.
-            if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize + 2 + 84) != 0x3B19)
+            if (_image[b + HeaderOffset] == 0xFF && SectorChecksumFails(b))
                 return s;
         }
         return null;
+    }
+
+    /// <summary>
+    /// The set of <b>logical sector numbers</b> (as declared in each sector's header) whose stored
+    /// checksums do not match — i.e. sectors that would fail a real read-back verify. This includes
+    /// any sector damaged by <see cref="ToMinervaCompatibleBytes"/>, so the sector map can show it.
+    /// Distinct from the <see cref="MdvSectorState.Damaged"/> map sentinel, which is checksum-valid.
+    /// </summary>
+    public HashSet<int> SectorsFailingVerify()
+    {
+        var bad = new HashSet<int>();
+        for (int i = 0; i < SectorCount; i++)
+        {
+            int b = i * SectorSize;
+            if (_image[b + HeaderOffset] == 0xFF && SectorChecksumFails(b))
+                bad.Add(_image[b + HeaderOffset + 1]); // the header's declared sector number
+        }
+        return bad;
+    }
+
+    /// <summary>True if any of the four stored checksums for the sector at byte offset <paramref name="b"/> mismatch.</summary>
+    private bool SectorChecksumFails(int b)
+    {
+        // Header checksum: sum of the 14 header bytes + 0x0F0F, little-endian at +14.
+        int headerSum = 0;
+        for (int i = 0; i < 14; i++)
+            headerSum += _image[b + HeaderOffset + i];
+        if (ReadLe16(_image, b + HeaderOffset + 14) != ((headerSum + 0x0F0F) & 0xFFFF))
+            return true;
+
+        // Record header checksum: fileNumber + fileBlock + 0x0F0F, little-endian at +2.
+        int recordSum = _image[b + RecordOffset] + _image[b + RecordOffset + 1];
+        if (ReadLe16(_image, b + RecordOffset + 2) != ((recordSum + 0x0F0F) & 0xFFFF))
+            return true;
+
+        // Data checksum: sum of the 512 data bytes + 0x0F0F, little-endian just after the data.
+        int dataSum = 0;
+        for (int i = 0; i < SectorDataSize; i++)
+            dataSum += _image[b + RecordDataOffset + i];
+        if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize) != ((dataSum + 0x0F0F) & 0xFFFF))
+            return true;
+
+        // Extra-bytes checksum: the fixed constant 0x3B19, after the 84 extra bytes.
+        if (ReadLe16(_image, b + RecordDataOffset + SectorDataSize + 2 + 84) != 0x3B19)
+            return true;
+
+        return false;
     }
 
     /// <summary>

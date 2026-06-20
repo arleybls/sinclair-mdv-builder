@@ -28,13 +28,15 @@ public partial class SectorMapPage : Page
         }
 
         var nameByFile = cart.Files.ToDictionary(f => f.FileNumber, f => f.Name);
+        var failingVerify = cart.SectorsFailingVerify();
 
         byte? highlight = AppState.HighlightFileNumber;
         SectorItems.ItemsSource = cart.Sectors
             .Select(s => new SectorCellView(
                 s,
                 highlight is byte fn && s.FileNumber == fn,
-                BuildToolTip(s, nameByFile)))
+                BuildToolTip(s, nameByFile, failingVerify.Contains(s.Index)),
+                failingVerify.Contains(s.Index)))
             .ToList();
 
         if (highlight is byte file)
@@ -53,7 +55,8 @@ public partial class SectorMapPage : Page
 
     private void OnClearHighlight(object sender, RoutedEventArgs e) => AppState.SetHighlightFile(null);
 
-    private static string BuildToolTip(MdvSectorInfo sector, IReadOnlyDictionary<byte, string> nameByFile)
+    private static string BuildToolTip(MdvSectorInfo sector, IReadOnlyDictionary<byte, string> nameByFile,
+        bool verifyFailed)
     {
         string relation = sector.State switch
         {
@@ -66,6 +69,7 @@ public partial class SectorMapPage : Page
             _ => $"File #{sector.FileNumber} · block {sector.FileBlock}",
         };
 
-        return $"Sector {sector.Index}\n{relation}";
+        string verify = verifyFailed ? "\nVerify error: checksum mismatch (e.g. Minerva workaround)" : "";
+        return $"Sector {sector.Index}\n{relation}{verify}";
     }
 }
