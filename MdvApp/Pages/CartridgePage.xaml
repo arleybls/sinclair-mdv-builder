@@ -111,8 +111,13 @@
             <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
                 <ui:Button Content="Export to ZIP" Icon="{ui:SymbolIcon FolderZip24}" Click="OnExportToZip" />
             </Border>
-            <Border Style="{StaticResource HoverOutline}" Margin="0">
+            <Border Style="{StaticResource HoverOutline}" Margin="0,0,8,0">
                 <ui:Button Content="Extract All" Icon="{ui:SymbolIcon ArrowExportLtr24}" Click="OnExtractAll" />
+            </Border>
+            <Border Style="{StaticResource HoverOutline}" Margin="0">
+                <ui:Button Content="Export Minerva… (experimental)" Icon="{ui:SymbolIcon Warning24}"
+                           ToolTip="Save a copy with sector 13 damaged so the Minerva ROM accepts it. Experimental, unverified on hardware."
+                           Click="OnExportMinerva" />
             </Border>
         </StackPanel>
 

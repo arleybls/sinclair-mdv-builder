@@ -432,6 +432,45 @@ public sealed class MdvCartridge
         return null;
     }
 
+    /// <summary>
+    /// EXPERIMENTAL — return a copy of this image made acceptable to the <b>Minerva</b> ROM, which
+    /// rejects "perfect" cartridges (every sector verifying). It mirrors the MicroPicoDrive
+    /// firmware's format-time workaround by damaging one sector so it fails read-back verify: a
+    /// header byte and a data-payload byte are nudged <i>after</i> the checksums were written, so the
+    /// stored checksums no longer match. Because every edit rebuilds the image with fresh checksums,
+    /// this must be applied last, at export time. Not validated on real Minerva hardware — exact
+    /// damage offsets are unconfirmed; see <c>docs/micropicodrive-minerva-format-notes.md</c>.
+    /// </summary>
+    public byte[] ToMinervaCompatibleBytes(byte damagedSector = 13) =>
+        ApplyMinervaWorkaround(_image, damagedSector);
+
+    /// <summary>
+    /// EXPERIMENTAL — see <see cref="ToMinervaCompatibleBytes"/>. Clones <paramref name="image"/> and
+    /// corrupts the sector whose header declares <paramref name="damagedSector"/> so it fails verify.
+    /// Returns the clone unchanged if no such sector is present.
+    /// </summary>
+    public static byte[] ApplyMinervaWorkaround(byte[] image, byte damagedSector = 13)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        if (image.Length != ImageSize)
+            throw new InvalidDataException($"Not a native MDV image: expected {ImageSize:N0} bytes.");
+
+        var copy = (byte[])image.Clone();
+        for (int i = 0; i < SectorCount; i++)
+        {
+            int b = i * SectorSize;
+            if (copy[b + HeaderOffset] != 0xFF || copy[b + HeaderOffset + 1] != damagedSector)
+                continue;
+
+            // Nudge a header byte (within the checksummed 14) and a data-payload byte, leaving the
+            // already-written checksums stale — exactly the inconsistency Minerva's verify trips on.
+            copy[b + HeaderOffset + 13] += 13;        // header hit (mirrors firmware in-RAM +13)
+            copy[b + RecordDataOffset + 100] += 13;   // data hit  (breaks the data checksum)
+            break;
+        }
+        return copy;
+    }
+
     /// <summary>Write the image to <paramref name="path"/> as a native .MDV file.</summary>
     public void Save(string path)
     {
