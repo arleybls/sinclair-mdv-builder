@@ -191,6 +191,4 @@ public partial class CartridgePage : Page
     private void OnSaveAs(object sender, RoutedEventArgs e) => AppActions.SaveCartridgeAs();
 
     private void OnExportToZip(object sender, RoutedEventArgs e) => AppActions.ExportToZip();
-
-    private void OnExportMinerva(object sender, RoutedEventArgs e) => AppActions.ExportMinervaCopy();
 }

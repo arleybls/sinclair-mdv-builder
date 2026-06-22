@@ -269,27 +269,6 @@ public class MdvCartridgeEdgeCaseTests
     }
 
     [Fact]
-    public void Minerva_workaround_damages_one_sector_without_mutating_the_original()
-    {
-        var cart = MdvCartridge.CreateEmpty("MIN", mediumId: 0x2222).ImportFile("F", Pattern(1, 1500));
-        Assert.True(cart.VerifyChecksums()); // a freshly built image is "perfect"
-
-        byte[] minerva = cart.ToMinervaCompatibleBytes();
-        Assert.Equal(MdvCartridge.ImageSize, minerva.Length);
-        Assert.NotEqual(cart.ToBytes(), minerva);                 // it changed something
-        Assert.True(cart.VerifyChecksums());                      // ...but not the original
-
-        var reloaded = MdvCartridge.LoadMdv(minerva);
-        Assert.False(reloaded.VerifyChecksums());                 // now a sector fails verify
-        Assert.NotNull(reloaded.FirstChecksumError());
-        // Exactly sector 13 (by logical sector number) is the one that fails — what the map shows.
-        Assert.Equal(new[] { 13 }, reloaded.SectorsFailingVerify().OrderBy(n => n).ToArray());
-        // The damaged sector is #13, so its data no longer reads back intact, but the rest is fine:
-        // the other file's content is untouched.
-        Assert.Equal(cart.ReadFileData(cart.FindFile("F")!), reloaded.ReadFileData(reloaded.FindFile("F")!));
-    }
-
-    [Fact]
     public void VerifyChecksums_passes_for_a_freshly_built_image_and_fails_when_corrupted()
     {
         var cart = MdvCartridge.CreateEmpty("CHK").ImportFile("F", Pattern(1, 1500));

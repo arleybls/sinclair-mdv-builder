@@ -732,49 +732,6 @@ internal static class AppActions
         }
     }
 
-    /// <summary>
-    /// EXPERIMENTAL — save a copy of the cartridge with one sector deliberately damaged so the
-    /// Minerva ROM (which rejects "perfect" cartridges) will accept it. Not validated on hardware.
-    /// </summary>
-    public static void ExportMinervaCopy()
-    {
-        var cartridge = AppState.Current;
-        if (cartridge == null)
-            return;
-
-        var confirm = MessageBox.Show(
-            "Experimental: this saves a SEPARATE .mdv copy with sector 13 deliberately damaged so " +
-            "the Minerva ROM accepts it (Minerva rejects flawless cartridges).\n\n" +
-            "It is unverified on real hardware, and the damaged sector will fail a checksum check. " +
-            "Your current cartridge is not modified.\n\nContinue?",
-            "Export Minerva-compatible copy (experimental)",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-        if (confirm != MessageBoxResult.OK)
-            return;
-
-        var dialog = new SaveFileDialog
-        {
-            Title = "Export Minerva-compatible copy",
-            Filter = "Microdrive image (*.mdv)|*.mdv|All files (*.*)|*.*",
-            FileName = Path.GetFileNameWithoutExtension(SuggestFileName(cartridge)) + "-minerva.mdv",
-            DefaultExt = ".mdv",
-            AddExtension = true,
-        };
-        if (dialog.ShowDialog() != true)
-            return;
-
-        try
-        {
-            File.WriteAllBytes(dialog.FileName, cartridge.ToMinervaCompatibleBytes());
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not export the Minerva copy:\n\n{ex.Message}", "Export failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     private static string SuggestZipName(MdvCartridge cartridge)
     {
         string baseName = !string.IsNullOrEmpty(cartridge.SourcePath)
